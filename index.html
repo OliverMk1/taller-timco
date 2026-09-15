@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F3864">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Consulta de pendientes y ordenes del taller. Solo lectura.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Taller TIMCO">
+<title>Taller TIMCO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --papel:#F5F7FA; --sup:#FFFFFF; --sup2:#EDF1F6; --tinta:#151B23; --suave:#5B6676;
+  --linea:#DDE3EB; --azul:#1F3864; --acento:#2E6FD9; --acento-sup:#E8F0FD;
+  --c10:#C0392B; --c8:#AE6A12; --c6:#3F6288; --cbajo:#78838F; --ok:#2F6B4F;
+  --sombra:0 1px 2px rgba(21,27,35,.06),0 4px 12px rgba(21,27,35,.05);
+  --r:10px;
+  --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --cuerpo:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --papel:#0E1319; --sup:#161D26; --sup2:#1E2731; --tinta:#E3E9F1; --suave:#8B98A8;
+    --linea:#2A3542; --azul:#4E7CBF; --acento:#5B9BF5; --acento-sup:#17263D;
+    --c10:#E8675A; --c8:#D69A3C; --c6:#7FA3C9; --cbajo:#8B98A8; --ok:#5FB98C;
+    --sombra:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --papel:#0E1319; --sup:#161D26; --sup2:#1E2731; --tinta:#E3E9F1; --suave:#8B98A8;
+  --linea:#2A3542; --azul:#4E7CBF; --acento:#5B9BF5; --acento-sup:#17263D;
+  --c10:#E8675A; --c8:#D69A3C; --c6:#7FA3C9; --cbajo:#8B98A8; --ok:#5FB98C;
+  --sombra:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+}
+</style>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--papel);color:var(--tinta);
+     font-family:var(--cuerpo);font-size:15px;line-height:1.45;
+     -webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+input{font:inherit}
+
+/* ---------- barra superior ---------- */
+.barra{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;
+  background:var(--azul);color:#fff;padding:10px 14px 0}
+.marca{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.marca h1{margin:0;font-family:var(--cond);font-weight:700;font-size:19px;
+  letter-spacing:.055em;text-transform:uppercase}
+.marca .solo{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  opacity:.72;border:1px solid rgba(255,255,255,.35);border-radius:3px;padding:1px 5px}
+.marca time{margin-left:auto;font-size:11.5px;opacity:.72;font-variant-numeric:tabular-nums}
+.buscar{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.14);
+  border-radius:8px;padding:8px 11px;margin:9px 0 10px}
+.buscar svg{flex:none;opacity:.7}
+.buscar input{flex:1;min-width:0;background:none;border:0;color:#fff;outline:none;font-size:15px}
+.buscar input::placeholder{color:rgba(255,255,255,.6)}
+.buscar button{background:none;border:0;padding:0 2px;color:#fff;opacity:.7;font-size:18px;line-height:1}
+
+/* ---------- chips ---------- */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:0 14px 11px;
+  background:var(--azul);scrollbar-width:none;position:sticky;z-index:19;
+  top:calc(env(safe-area-inset-top,0px) + 92px)}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;background:rgba(255,255,255,.12);color:#fff;border:1px solid transparent;
+  border-radius:999px;padding:5px 12px;font-size:13px;font-weight:500;white-space:nowrap}
+.chip .n{opacity:.62;margin-left:5px;font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:#fff;color:var(--azul);font-weight:600}
+.chip[aria-pressed="true"] .n{opacity:.55}
+.chip.critico[aria-pressed="true"]{background:var(--c10);color:#fff}
+
+/* ---------- lienzo ---------- */
+main{padding:14px 14px 92px;max-width:820px;margin:0 auto}
+.resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-bottom:16px}
+.tile{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  padding:10px 11px;box-shadow:var(--sombra)}
+.tile b{display:block;font-family:var(--cond);font-weight:700;font-size:26px;
+  line-height:1.05;font-variant-numeric:tabular-nums}
+.tile span{display:block;font-size:11px;color:var(--suave);letter-spacing:.03em;margin-top:2px}
+.tile.rojo b{color:var(--c10)}
+.tile.ambar b{color:var(--c8)}
+
+h2.seccion{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--suave);margin:20px 0 9px}
+
+/* ---------- unidad ---------- */
+.unidad{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  margin-bottom:10px;overflow:hidden;box-shadow:var(--sombra)}
+.ucab{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;
+  text-align:left;padding:11px 12px}
+.placa{font-family:var(--cond);font-weight:700;font-size:20px;letter-spacing:.06em}
+.tipo{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--suave);
+  border:1px solid var(--linea);border-radius:3px;padding:1px 5px}
+.ucab .cuenta{margin-left:auto;display:flex;align-items:center;gap:7px;
+  font-size:12.5px;color:var(--suave);font-variant-numeric:tabular-nums}
+.punto{width:8px;height:8px;border-radius:50%;flex:none}
+.flecha{transition:transform .18s;opacity:.5;flex:none}
+.unidad[data-abierta="1"] .flecha{transform:rotate(90deg)}
+.trabajos{display:none;border-top:1px solid var(--linea)}
+.unidad[data-abierta="1"] .trabajos{display:block}
+
+.trabajo{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--linea)}
+.trabajo:last-child{border-bottom:0}
+.franja{width:3px;border-radius:2px;flex:none;align-self:stretch}
+.tcuerpo{min-width:0;flex:1}
+.tmeta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px}
+.crit{font-family:var(--cond);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;
+  min-width:20px}
+.cat{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave);font-weight:600}
+.dias{font-size:11.5px;color:var(--suave);font-variant-numeric:tabular-nums;margin-left:auto}
+.dias.viejo{color:var(--c8);font-weight:600}
+.texto{font-size:14.5px;overflow-wrap:anywhere}
+.etq{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:1px 6px;
+  border-radius:4px;margin-top:5px;margin-right:5px}
+.etq.orden{background:var(--acento-sup);color:var(--acento);font-weight:600;
+  font-variant-numeric:tabular-nums}
+.etq.espera{background:var(--sup2);color:var(--suave)}
+.etq.veces{background:var(--sup2);color:var(--c8);font-weight:600}
+
+/* ---------- ordenes ---------- */
+.orden{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  padding:11px 12px;margin-bottom:9px;box-shadow:var(--sombra)}
+.ocab{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.ocab .corr{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing:.05em;
+  color:var(--suave);font-variant-numeric:tabular-nums}
+.estado{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;
+  padding:2px 7px;border-radius:999px}
+.estado.gen{background:var(--acento-sup);color:var(--acento)}
+.estado.tal{background:rgba(174,106,18,.14);color:var(--c8)}
+.ometa{font-size:12.5px;color:var(--suave);margin-top:4px}
+.progreso{height:5px;border-radius:3px;background:var(--sup2);margin-top:9px;overflow:hidden}
+.progreso i{display:block;height:100%;background:var(--ok);border-radius:3px}
+
+.vacio{text-align:center;color:var(--suave);padding:44px 18px;font-size:14.5px}
+.vacio b{display:block;font-family:var(--cond);font-size:19px;color:var(--ok);
+  letter-spacing:.04em;margin-bottom:5px}
+
+/* ---------- nav inferior ---------- */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;
+  background:var(--sup);border-top:1px solid var(--linea);
+  padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;border:0;padding:9px 4px 10px;color:var(--suave);
+  display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500}
+nav button[aria-current="page"]{color:var(--acento)}
+nav svg{width:21px;height:21px}
+:focus-visible{outline:2px solid var(--acento);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>
+/* ---------- puerta del PIN ---------- */
+#puerta[hidden]{display:none!important}
+#puerta{position:fixed;inset:0;z-index:60;background:var(--azul);color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;padding:28px 22px;text-align:center}
+#puerta img{width:76px;height:76px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#puerta h2{margin:0;font-family:var(--cond);font-weight:700;font-size:23px;
+  letter-spacing:.055em;text-transform:uppercase}
+#puerta p{margin:0;max-width:22em;font-size:13.5px;line-height:1.55;opacity:.8}
+#puerta form{display:flex;flex-direction:column;gap:10px;width:100%;max-width:280px}
+#pin{width:100%;padding:13px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.12);color:#fff;font-size:17px;text-align:center;
+  letter-spacing:.18em;outline:none}
+#pin::placeholder{letter-spacing:normal;color:rgba(255,255,255,.55)}
+#pin:focus{border-color:#fff;background:rgba(255,255,255,.18)}
+#entrar{padding:13px 14px;border-radius:10px;border:0;background:#fff;color:var(--azul);
+  font-weight:700;font-size:15px;letter-spacing:.03em}
+#entrar[disabled]{opacity:.55}
+#aviso{min-height:1.2em;font-size:13px;color:#FFD4CE;font-weight:600}
+#puerta .pie{font-size:11.5px;opacity:.6;max-width:24em}
+
+/* ---------- cinta de estado ---------- */
+#cinta{position:sticky;z-index:18;top:calc(env(safe-area-inset-top,0px) + 92px);
+  background:var(--c8);color:#fff;font-size:12px;padding:6px 14px;text-align:center}
+#cinta[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="puerta">
+  <img src="icono-192.png" alt="" width="76" height="76">
+  <h2>Taller TIMCO</h2>
+  <p>Consulta de pendientes y órdenes. Teclea el PIN una sola vez: este teléfono lo recuerda.</p>
+  <form id="formpin" autocomplete="off">
+    <input id="pin" type="password" inputmode="numeric" placeholder="PIN"
+           autocomplete="current-password" aria-label="PIN de acceso">
+    <button type="submit" id="entrar">Entrar</button>
+  </form>
+  <div id="aviso" role="status" aria-live="polite"></div>
+  <div class="pie">Solo lectura. Desde aquí no se crean ni se cierran órdenes.</div>
+</div>
+<header class="barra">
+  <div class="marca">
+    <h1>Taller TIMCO</h1>
+    <span class="solo">Solo consulta</span>
+    <time id="sello"></time>
+  </div>
+  <label class="buscar">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" inputmode="search" autocomplete="off"
+           placeholder="Placa o palabra: AWM-902, freno, llanta…" aria-label="Buscar">
+    <button type="button" id="limpiar" hidden aria-label="Limpiar búsqueda">×</button>
+  </label>
+</header>
+<div class="chips" id="chips"></div>
+<div id="cinta" hidden></div>
+
+<main>
+  <div id="lienzo"></div>
+</main>
+
+<nav>
+  <button type="button" data-vista="pend" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M4 6h16M4 12h16M4 18h10"/></svg>Pendientes</button>
+  <button type="button" data-vista="ord">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>Órdenes</button>
+  <button type="button" data-vista="res">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen</button>
+</nav>
+<script>
+window.arrancar = function(D){
+"use strict";
+const lienzo = document.getElementById("lienzo");
+const chips  = document.getElementById("chips");
+const caja   = document.getElementById("q");
+const limpiar= document.getElementById("limpiar");
+
+// El taller trabaja por especialidad: cada categoria tiene su gente.
+const TECNICOS = D.tecnicos || {};
+const ORDEN_CAT = ["MECANICO","ELECTRICO","INFRAESTRUCTURA","NEUMATICO","REFRIGERADO",
+                   "ACCESORIO","IMPLEMENTO","PINTURA","PERMISOLOGIA","DOCUMENTOS"];
+
+let vista = "pend", cat = "", soloCriticos = false, texto = "", abiertas = new Set();
+try {
+  const g = JSON.parse(localStorage.getItem("taller-timco") || "{}");
+  if (g.cat) cat = g.cat;
+  if (g.soloCriticos) soloCriticos = true;
+} catch(e){}
+function recordar(){
+  try { localStorage.setItem("taller-timco",
+        JSON.stringify({cat:cat, soloCriticos:soloCriticos})); } catch(e){}
+}
+
+const sinTildes = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
+const nivel = k => k==null ? "bajo" : k>=10 ? "c10" : k>=8 ? "c8" : k>=6 ? "c6" : "bajo";
+const colorNivel = n => n==="c10" ? "var(--c10)" : n==="c8" ? "var(--c8)"
+                      : n==="c6" ? "var(--c6)" : "var(--cbajo)";
+const esc = s => (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const dia = s => s ? s.slice(8,10)+"/"+s.slice(5,7)+"/"+s.slice(2,4) : "";
+
+document.getElementById("sello").textContent =
+  "al " + dia(D.generado.slice(0,10)) + " " + D.generado.slice(11,16);
+
+function filtrados(){
+  const t = sinTildes(texto).trim();
+  return D.pend.filter(p => {
+    if (cat && p.c !== cat) return false;
+    if (soloCriticos && !(p.k >= 8)) return false;
+    if (t && !(sinTildes(p.u).includes(t) || sinTildes(p.x).includes(t)
+               || sinTildes(p.c).includes(t) || sinTildes(p.o).includes(t))) return false;
+    return true;
+  });
+}
+
+function pintarChips(){
+  const cuenta = {};
+  for (const p of D.pend) cuenta[p.c] = (cuenta[p.c]||0) + 1;
+  const criticos = D.pend.filter(p => p.k >= 8).length;
+  let h = `<button type="button" class="chip" data-cat="" aria-pressed="${cat===""}">`
+        + `Todas<span class="n">${D.pend.length}</span></button>`
+        + `<button type="button" class="chip critico" data-critico="1" `
+        + `aria-pressed="${soloCriticos}">Críticos<span class="n">${criticos}</span></button>`;
+  for (const c of ORDEN_CAT){
+    if (!cuenta[c]) continue;
+    const quien = TECNICOS[c] ? " · " + TECNICOS[c].split(" · ")[0] : "";
+    h += `<button type="button" class="chip" data-cat="${c}" aria-pressed="${cat===c}">`
+       + `${c.charAt(0)+c.slice(1).toLowerCase()}${esc(quien)}<span class="n">${cuenta[c]}</span></button>`;
+  }
+  chips.innerHTML = h;
+}
+
+function pintarPendientes(){
+  const filas = filtrados();
+  if (!filas.length){
+    lienzo.innerHTML = `<p class="vacio"><b>Nada por aquí</b>`
+      + (texto ? `Ninguna unidad ni observación coincide con «${esc(texto)}».`
+               : `No hay pendientes con este filtro.`) + `</p>`;
+    return;
+  }
+  const porUnidad = new Map();
+  for (const p of filas){
+    if (!porUnidad.has(p.u)) porUnidad.set(p.u, []);
+    porUnidad.get(p.u).push(p);
+  }
+  // La unidad que más debe y más grave, primero: es la que hay que mirar hoy.
+  const unidades = [...porUnidad.entries()].sort((a,b) => {
+    const ga = Math.max(...a[1].map(p => p.k||0)), gb = Math.max(...b[1].map(p => p.k||0));
+    return gb - ga || b[1].length - a[1].length || a[0].localeCompare(b[0]);
+  });
+  const criticos = filas.filter(p => p.k >= 8).length;
+  const viejos = filas.filter(p => p.n > 30).length;
+
+  let h = `<div class="resumen">
+      <div class="tile"><b>${filas.length}</b><span>pendientes</span></div>
+      <div class="tile"><b>${unidades.length}</b><span>unidades</span></div>
+      <div class="tile rojo"><b>${criticos}</b><span>criticidad 8+</span></div>
+      <div class="tile ambar"><b>${viejos}</b><span>+30 días</span></div>
+    </div>`;
+
+  for (const [placa, ps] of unidades){
+    ps.sort((a,b) => (b.k||0)-(a.k||0) || b.n-a.n);
+    const peor = nivel(Math.max(...ps.map(p => p.k||0)));
+    const abierta = abiertas.has(placa) || unidades.length <= 3;
+    h += `<section class="unidad" data-abierta="${abierta?1:0}">
+      <button type="button" class="ucab" data-placa="${esc(placa)}"
+              aria-expanded="${abierta}">
+        <span class="punto" style="background:${colorNivel(peor)}"></span>
+        <span class="placa">${esc(placa)}</span>
+        <span class="tipo">${ps[0].t === "C" ? "Carreta" : "Tracto"}</span>
+        <span class="cuenta">${ps.length} pend.
+          <svg class="flecha" width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </span>
+      </button>
+      <div class="trabajos">`;
+    for (const p of ps){
+      const n = nivel(p.k), col = colorNivel(n);
+      h += `<article class="trabajo">
+        <span class="franja" style="background:${col}"></span>
+        <div class="tcuerpo">
+          <div class="tmeta">
+            <span class="crit" style="color:${col}">${p.k==null?"–":p.k}</span>
+            <span class="cat">${esc(p.c||"sin categoría")}</span>
+            <span class="dias${p.n>30?" viejo":""}">${p.n} d · desde ${dia(p.d)}</span>
+          </div>
+          <div class="texto">${esc(p.x)}</div>`;
+      if (p.o) h += `<span class="etq orden">En ${esc(p.o)}</span>`;
+      if (p.v > 1) h += `<span class="etq veces">Pedido ${p.v} veces</span>`;
+      if (p.r) h += `<span class="etq espera">Espera: ${esc(p.r)}</span>`;
+      h += `</div></article>`;
+    }
+    h += `</div></section>`;
+  }
+  lienzo.innerHTML = h;
+}
+
+function pintarOrdenes(){
+  const t = sinTildes(texto).trim();
+  const os = D.ordenes.filter(o =>
+    (!cat || o.c === cat) &&
+    (!t || sinTildes(o.p).includes(t) || sinTildes(o.k).includes(t) || sinTildes(o.c).includes(t)));
+  if (!os.length){ lienzo.innerHTML = `<p class="vacio"><b>Sin órdenes</b>No hay órdenes abiertas con este filtro.</p>`; return; }
+  const enTaller = os.filter(o => o.e === "EN_TALLER").length;
+  let h = `<div class="resumen">
+      <div class="tile"><b>${os.length}</b><span>abiertas</span></div>
+      <div class="tile"><b>${enTaller}</b><span>en taller</span></div>
+      <div class="tile"><b>${os.reduce((a,o)=>a+o.t-o.h,0)}</b><span>trabajos por hacer</span></div>
+    </div><h2 class="seccion">Órdenes abiertas</h2>`;
+  for (const o of os){
+    const pct = o.t ? Math.round(o.h/o.t*100) : 0;
+    h += `<article class="orden">
+      <div class="ocab">
+        <span class="placa">${esc(o.p)}</span>
+        <span class="estado ${o.e==="EN_TALLER"?"tal":"gen"}">${o.e==="EN_TALLER"?"En taller":"Generada"}</span>
+        <span class="corr">${esc(o.k)}</span>
+      </div>
+      <div class="ometa">${esc(o.c)} · ${esc(o.op||"sin asignar")} · emitida ${dia(o.fe)}</div>
+      <div class="ometa"><b>${o.h}</b> de <b>${o.t}</b> trabajos hechos</div>
+      <div class="progreso"><i style="width:${pct}%"></i></div>
+    </article>`;
+  }
+  lienzo.innerHTML = h;
+}
+
+function pintarResumen(){
+  const porCat = {}, porUni = {};
+  for (const p of D.pend){
+    porCat[p.c] = porCat[p.c] || {n:0, c:0};
+    porCat[p.c].n++; if (p.k>=8) porCat[p.c].c++;
+    porUni[p.u] = porUni[p.u] || {n:0, k:0};
+    porUni[p.u].n++; porUni[p.u].k = Math.max(porUni[p.u].k, p.k||0);
+  }
+  const criticos = D.pend.filter(p=>p.k>=8).length;
+  const maxCat = Math.max(...Object.values(porCat).map(v=>v.n));
+  let h = `<div class="resumen">
+      <div class="tile"><b>${D.pend.length}</b><span>pendientes</span></div>
+      <div class="tile"><b>${Object.keys(porUni).length}</b><span>de ${D.total_unidades} unidades</span></div>
+      <div class="tile rojo"><b>${criticos}</b><span>criticidad 8+</span></div>
+      <div class="tile"><b>${D.ordenes.length}</b><span>órdenes abiertas</span></div>
+    </div><h2 class="seccion">Por especialidad</h2>`;
+  for (const c of ORDEN_CAT){
+    const v = porCat[c]; if (!v) continue;
+    h += `<article class="orden" style="padding:10px 12px">
+      <div class="ocab"><span style="font-weight:600">${c.charAt(0)+c.slice(1).toLowerCase()}</span>
+        <span class="corr" style="margin-left:auto">${v.n}${v.c?` · ${v.c} graves`:""}</span></div>
+      ${TECNICOS[c] ? `<div class="ometa">${esc(TECNICOS[c])}</div>` : ""}
+      <div class="progreso"><i style="width:${Math.round(v.n/maxCat*100)}%;
+           background:${v.c ? "var(--c8)" : "var(--c6)"}"></i></div>
+    </article>`;
+  }
+  const top = Object.entries(porUni).sort((a,b)=>b[1].n-a[1].n).slice(0,12);
+  h += `<h2 class="seccion">Las que más deben</h2>`;
+  for (const [u,v] of top){
+    h += `<article class="orden" style="padding:9px 12px">
+      <div class="ocab"><span class="punto" style="background:${colorNivel(nivel(v.k))}"></span>
+        <span class="placa">${esc(u)}</span>
+        <span class="corr" style="margin-left:auto">${v.n} pendientes</span></div>
+    </article>`;
+  }
+  lienzo.innerHTML = h;
+}
+
+function pintar(){
+  pintarChips();
+  if (vista === "pend") pintarPendientes();
+  else if (vista === "ord") pintarOrdenes();
+  else pintarResumen();
+}
+
+chips.addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  if (b.dataset.critico) soloCriticos = !soloCriticos;
+  else { cat = b.dataset.cat; }
+  recordar(); pintar();
+});
+lienzo.addEventListener("click", e => {
+  const b = e.target.closest(".ucab"); if (!b) return;
+  const placa = b.dataset.placa, s = b.closest(".unidad");
+  const abierta = s.dataset.abierta === "1";
+  s.dataset.abierta = abierta ? "0" : "1";
+  b.setAttribute("aria-expanded", String(!abierta));
+  if (abierta) abiertas.delete(placa); else abiertas.add(placa);
+});
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
+  vista = b.dataset.vista;
+  document.querySelectorAll("nav button").forEach(x =>
+    x.removeAttribute("aria-current"));
+  b.setAttribute("aria-current", "page");
+  window.scrollTo({top:0});
+  pintar();
+}));
+let t0;
+caja.addEventListener("input", () => {
+  texto = caja.value; limpiar.hidden = !texto;
+  clearTimeout(t0); t0 = setTimeout(pintar, 140);
+});
+limpiar.addEventListener("click", () => {
+  caja.value = ""; texto = ""; limpiar.hidden = true; caja.focus(); pintar();
+});
+
+pintar();
+};
+</script>
+<script>
+/* ------------------------------------------------------------------
+   Puerta y carga de datos.
+
+   El archivo datos.json esta en una direccion publica, asi que viaja
+   cifrado. El PIN no viaja nunca: se teclea aqui, se deriva la clave con
+   PBKDF2 y se descifra en el propio telefono.
+
+   Lo ultimo descifrado queda guardado en el telefono, asi que la pagina
+   abre al instante y sigue sirviendo cuando el taller no tiene senal.
+------------------------------------------------------------------ */
+(function(){
+"use strict";
+const RUTA   = "datos.json";
+const K_PIN  = "taller-timco-pin";
+const K_DAT  = "taller-timco-cache";
+const K_FEC  = "taller-timco-cache-fecha";
+const puerta = document.getElementById("puerta");
+const aviso  = document.getElementById("aviso");
+const boton  = document.getElementById("entrar");
+const campo  = document.getElementById("pin");
+const cinta  = document.getElementById("cinta");
+
+const leer    = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+const anotar  = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
+const olvidar = k => { try { localStorage.removeItem(k); } catch(e){} };
+const bytes   = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const cuandoLegible = s =>
+  s ? s.slice(8,10)+"/"+s.slice(5,7)+" a las "+s.slice(11,16) : "antes";
+
+async function clave(pin, sal, vueltas){
+  const semilla = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt:sal, iterations:vueltas, hash:"SHA-256"},
+    semilla, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+}
+
+async function abrir(sobre, pin){
+  const k = await clave(pin, bytes(sobre.sal), sobre.vueltas || 200000);
+  const claro = await crypto.subtle.decrypt(
+    {name:"AES-GCM", iv:bytes(sobre.iv)}, k, bytes(sobre.datos));
+  return new TextDecoder().decode(claro);
+}
+
+async function bajar(){
+  const r = await fetch(RUTA + "?t=" + Date.now(), {cache:"no-store"});
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+let pintado = null;   // la marca de tiempo de lo que ya se esta viendo
+
+function pintar(texto, generado){
+  puerta.hidden = true;
+  if (pintado === null){
+    pintado = generado || "sin-fecha";
+    window.arrancar(JSON.parse(texto));
+  } else if (generado && generado !== pintado){
+    hayNuevo();
+  }
+}
+
+function hayNuevo(){
+  if (!cinta) return;
+  cinta.hidden = false;
+  cinta.innerHTML = 'Hay datos más nuevos. <button type="button">Actualizar</button>';
+  cinta.querySelector("button").addEventListener("click", () => location.reload());
+}
+
+function sinSenal(cuando){
+  if (!cinta) return;
+  cinta.hidden = false;
+  cinta.textContent = "Sin conexión — mostrando lo guardado el " + cuandoLegible(cuando);
+}
+
+/* Devuelve: "bien" | "pin" | "red" */
+async function intentar(pin){
+  let sobre;
+  try { sobre = await bajar(); } catch(e){ return "red"; }
+  let texto;
+  try { texto = await abrir(sobre, pin); } catch(e){ return "pin"; }
+  anotar(K_PIN, pin);
+  anotar(K_DAT, texto);
+  anotar(K_FEC, sobre.generado || "");
+  if (cinta) cinta.hidden = true;
+  pintar(texto, sobre.generado);
+  return "bien";
+}
+
+document.getElementById("formpin").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const pin = campo.value.trim();
+  if (!pin) return;
+  boton.disabled = true; aviso.textContent = "Comprobando...";
+  const r = await intentar(pin);
+  boton.disabled = false;
+  if (r === "bien") { aviso.textContent = ""; campo.value = ""; }
+  else if (r === "pin") { aviso.textContent = "PIN incorrecto."; campo.select(); }
+  else { aviso.textContent = "Sin conexión. Conéctate una vez para bajar los datos."; }
+});
+
+(async function(){
+  const pin = leer(K_PIN);
+  if (!pin) { campo.focus(); return; }
+  const cache = leer(K_DAT);
+  if (cache) { try { pintar(cache, leer(K_FEC)); } catch(e){} }   // al instante
+  const r = await intentar(pin);                                  // y la red despues
+  if (r === "red" && pintado !== null) sinSenal(leer(K_FEC));
+  if (r === "pin") {
+    olvidar(K_PIN);
+    if (pintado === null) { campo.focus(); aviso.textContent =
+      "El PIN cambió. Pídeselo a mantenimiento."; }
+  }
+})();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () =>
+    navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+})();
+</script>
+</body>
+</html>
