@@ -1,0 +1,16 @@
+{
+  "name": "Taller TIMCO",
+  "short_name": "Taller",
+  "description": "Consulta de pendientes y ordenes del taller. Solo lectura.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1F3864",
+  "theme_color": "#1F3864",
+  "lang": "es-PE",
+  "icons": [
+    {"src": "icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
