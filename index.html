@@ -188,7 +188,9 @@ nav svg{width:21px;height:21px}
   <h2>Taller TIMCO</h2>
   <p>Consulta de pendientes y órdenes. Teclea el PIN una sola vez: este teléfono lo recuerda.</p>
   <form id="formpin" autocomplete="off">
-    <input id="pin" type="password" inputmode="numeric" placeholder="PIN"
+    <!-- Sin inputmode="numeric": el PIN puede llevar letras y ese
+         teclado no las tiene. Ya paso. -->
+    <input id="pin" type="password" placeholder="PIN"
            autocomplete="current-password" aria-label="PIN de acceso">
     <button type="submit" id="entrar">Entrar</button>
   </form>
