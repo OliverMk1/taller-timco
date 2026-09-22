@@ -77,6 +77,21 @@ input{font:inherit}
 .chip[aria-pressed="true"] .n{opacity:.55}
 .chip.critico[aria-pressed="true"]{background:var(--c10);color:#fff}
 
+/* ---------- barra de orden (dentro del lienzo, sobre papel claro) ---------- */
+.orden-barra{display:flex;align-items:center;gap:7px;overflow-x:auto;
+  margin:-6px 0 14px;padding-bottom:3px;scrollbar-width:none}
+.orden-barra::-webkit-scrollbar{display:none}
+.orden-rot{flex:none;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--suave);font-weight:600}
+.orden-barra .chip{background:var(--sup);color:var(--tinta);
+  border:1px solid var(--linea);box-shadow:var(--sombra);font-size:12.5px;padding:5px 11px}
+.orden-barra .chip[aria-pressed="true"]{background:var(--azul);color:#fff;
+  border-color:var(--azul);font-weight:600}
+.orden-barra .chip[data-criterio]{display:inline-flex;align-items:center;gap:4px}
+.orden-barra .chip.vuelta{display:inline-flex;align-items:center;justify-content:center;
+  margin-left:auto;color:var(--acento);padding:5px 9px}
+.orden-barra .chip.vuelta svg{flex:none}
+
 /* ---------- lienzo ---------- */
 main{padding:14px 14px 92px;max-width:820px;margin:0 auto}
 .resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-bottom:16px}
@@ -246,14 +261,21 @@ const ORDEN_CAT = ["MECANICO","ELECTRICO","INFRAESTRUCTURA","NEUMATICO","REFRIGE
                    "ACCESORIO","IMPLEMENTO","PINTURA","PERMISOLOGIA","DOCUMENTOS"];
 
 let vista = "pend", cat = "", soloCriticos = false, texto = "", abiertas = new Set();
+// Por defecto lo mas antiguo primero: lo que lleva meses pedido es lo que
+// hay que mirar, y la gravedad ya se ve en el color de cada trabajo.
+let criterio = "ant";      // "ant" antiguedad · "grav" criticidad
+let viejosArriba = true;   // true = de mas antiguos a mas recientes
 try {
   const g = JSON.parse(localStorage.getItem("taller-timco") || "{}");
   if (g.cat) cat = g.cat;
   if (g.soloCriticos) soloCriticos = true;
+  if (g.criterio === "ant" || g.criterio === "grav") criterio = g.criterio;
+  if (typeof g.viejosArriba === "boolean") viejosArriba = g.viejosArriba;
 } catch(e){}
 function recordar(){
   try { localStorage.setItem("taller-timco",
-        JSON.stringify({cat:cat, soloCriticos:soloCriticos})); } catch(e){}
+        JSON.stringify({cat:cat, soloCriticos:soloCriticos,
+                        criterio:criterio, viejosArriba:viejosArriba})); } catch(e){}
 }
 
 const sinTildes = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
@@ -307,23 +329,54 @@ function pintarPendientes(){
     if (!porUnidad.has(p.u)) porUnidad.set(p.u, []);
     porUnidad.get(p.u).push(p);
   }
-  // La unidad que más debe y más grave, primero: es la que hay que mirar hoy.
+  // Una unidad se ordena por su trabajo mas antiguo (o mas grave, segun el
+  // criterio), no por el promedio: lo que decide si hay que traerla es su
+  // peor caso, no la media de sus pendientes.
+  const signo = viejosArriba ? 1 : -1;
+  const pesoAnt  = p => (p.n || 0);
+  const pesoGrav = p => (p.k || 0);
+  const peso = criterio === "ant" ? pesoAnt : pesoGrav;
+  const cmpTrabajos = (a,b) => signo * (peso(b) - peso(a))
+        || (b.k||0) - (a.k||0) || (b.n||0) - (a.n||0);
   const unidades = [...porUnidad.entries()].sort((a,b) => {
-    const ga = Math.max(...a[1].map(p => p.k||0)), gb = Math.max(...b[1].map(p => p.k||0));
-    return gb - ga || b[1].length - a[1].length || a[0].localeCompare(b[0]);
+    const pa = Math.max(...a[1].map(peso)), pb = Math.max(...b[1].map(peso));
+    return signo * (pb - pa) || b[1].length - a[1].length || a[0].localeCompare(b[0]);
   });
   const criticos = filas.filter(p => p.k >= 8).length;
   const viejos = filas.filter(p => p.n > 30).length;
+
+  // La flecha va DENTRO del criterio activo: asi se ve de un vistazo en que
+  // sentido esta ordenado, sin leer nada. El boton de la derecha le da la
+  // vuelta, y pulsar el criterio que ya esta puesto hace lo mismo.
+  const flecha = viejosArriba
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.8" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>`
+      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.8" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`;
+  const rotulo = criterio === "ant"
+      ? (viejosArriba ? "Más antiguos primero" : "Más recientes primero")
+      : (viejosArriba ? "Más graves primero"   : "Menos graves primero");
+  const marca = c => criterio === c ? flecha : "";
 
   let h = `<div class="resumen">
       <div class="tile"><b>${filas.length}</b><span>pendientes</span></div>
       <div class="tile"><b>${unidades.length}</b><span>unidades</span></div>
       <div class="tile rojo"><b>${criticos}</b><span>criticidad 8+</span></div>
       <div class="tile ambar"><b>${viejos}</b><span>+30 días</span></div>
+    </div>
+    <div class="orden-barra">
+      <span class="orden-rot">Ordenar</span>
+      <button type="button" class="chip" data-criterio="ant" title="${rotulo}"
+              aria-pressed="${criterio==="ant"}">${marca("ant")}Antigüedad</button>
+      <button type="button" class="chip" data-criterio="grav" title="${rotulo}"
+              aria-pressed="${criterio==="grav"}">${marca("grav")}Gravedad</button>
+      <button type="button" class="chip vuelta" id="invertir"
+              title="${rotulo} · pulsa para invertir"
+              aria-label="Invertir el orden: ahora, ${rotulo}">${flecha}</button>
     </div>`;
 
   for (const [placa, ps] of unidades){
-    ps.sort((a,b) => (b.k||0)-(a.k||0) || b.n-a.n);
+    ps.sort(cmpTrabajos);
     const peor = nivel(Math.max(...ps.map(p => p.k||0)));
     const abierta = abiertas.has(placa) || unidades.length <= 3;
     h += `<section class="unidad" data-abierta="${abierta?1:0}">
@@ -509,6 +562,17 @@ lienzo.addEventListener("click", e => {
   const chipSem = e.target.closest(".chip[data-sem]");
   if (chipSem){ semFiltro = (semFiltro === chipSem.dataset.sem) ? "" : chipSem.dataset.sem;
                 pintar(); return; }
+  const chipOrd = e.target.closest(".chip[data-criterio]");
+  if (chipOrd){
+    // Pulsar el criterio que ya esta puesto le da la vuelta: es lo que
+    // espera la mano, y evita tener que buscar otro boton.
+    if (criterio === chipOrd.dataset.criterio) viejosArriba = !viejosArriba;
+    else { criterio = chipOrd.dataset.criterio; viejosArriba = true; }
+    recordar(); pintar(); return;
+  }
+  if (e.target.closest("#invertir")){
+    viejosArriba = !viejosArriba; recordar(); pintar(); return;
+  }
   const b = e.target.closest(".ucab"); if (!b) return;
   const placa = b.dataset.placa, s = b.closest(".unidad");
   const abierta = s.dataset.abierta === "1";
