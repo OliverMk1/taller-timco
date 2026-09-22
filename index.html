@@ -262,6 +262,10 @@ nav svg{width:21px;height:21px}
   <button type="button" data-vista="ord">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>Órdenes</button>
+  <button type="button" data-vista="plan" id="btnplan" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M9 11l2 2 4-4"/><rect x="3" y="4" width="18" height="17" rx="2"/>
+      <path d="M8 2v4M16 2v4"/></svg>Plan</button>
   <button type="button" data-vista="ace" id="btnace" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M3 13h4l2-5 3 10 2-6 2 3h5"/></svg>Aceite</button>
@@ -548,8 +552,10 @@ function pintarAceite(){
   if (ACE.gen){
     const d0 = new Date(ACE.gen + "T00:00:00"), hoy = new Date();
     const dd = Math.round((hoy - d0) / 86400000);
+    const sello = ACE.sel ? ` · archivo del ${dia(ACE.sel.slice(0,10))} ${ACE.sel.slice(11,16)}` : "";
     h += `<p class="nota-ace${dd > 10 ? " vieja" : ""}">Calculado el ${dia(ACE.gen)}`
        + (dd > 0 ? ` · hace ${dd} día${dd === 1 ? "" : "s"}` : " · hoy")
+       + esc(sello)
        + (dd > 10 ? " — los kilómetros de esta semana ya no son estos" : "") + `</p>`;
   }
 
@@ -604,17 +610,102 @@ function pintarAceite(){
   lienzo.innerHTML = h;
 }
 
+// ---- Plan del dia ------------------------------------------------------
+// Lo arma el aplicativo de la PC con las placas que hay en el patio y viaja
+// en D.plan (claves cortas, ver app/plan.py:para_movil). TALLER es donde se
+// produce hoy; ARENA es el almacen: en espera, muchas veces porque no hay
+// tracto para moverla.
+const PLAN = D.plan || null;
+const PRIOR = ["MECANICO","ELECTRICO","INFRAESTRUCTURA"];
+let zonaPlan = "";
+
+function pintarPlan(){
+  if (!PLAN){ lienzo.innerHTML = `<p class="vacio"><b>Sin plan</b>Todavía no se ha publicado el plan del día.</p>`; return; }
+  const t = sinTildes(texto).trim();
+  let us = PLAN.u.filter(u => (!zonaPlan || u.z === zonaPlan)
+        && (!t || sinTildes(u.p).includes(t)
+            || u.w.some(w => sinTildes(w.x).includes(t) || sinTildes(w.c).includes(t))));
+  const R = PLAN.res || {};
+  const chip = (clave, rot, n) =>
+    `<button type="button" class="chip" data-zona="${clave}" aria-pressed="${zonaPlan===clave}">`
+    + `${rot}<span class="n">${n}</span></button>`;
+  let h = `<div class="resumen">
+      <div class="tile"><b>${R.n||0}</b><span>unidades</span></div>
+      <div class="tile"><b>${R.tr||0}</b><span>trabajos</span></div>
+      <div class="tile"><b>${R.p||0}</b><span>mec/elec/infra</span></div>
+      <div class="tile rojo"><b>${R.c||0}</b><span>críticos</span></div>
+    </div>
+    <div class="chips-lienzo">${chip("", "Todas", R.n||0)}
+      ${chip("TALLER","En taller",R.t||0)}${chip("ARENA","En arena",R.a||0)}</div>`;
+  if (PLAN.f) h += `<p class="nota-ace">Plan del ${dia(PLAN.f)}</p>`;
+
+  if ((PLAN.av||[]).length && !zonaPlan && !t){
+    h += `<h2 class="seccion">Ojo con esto</h2>`;
+    for (const a of PLAN.av){
+      h += `<article class="orden" style="padding:9px 12px">
+        <div class="ometa">${esc(a)}</div></article>`;
+    }
+  }
+
+  for (const zona of ["TALLER","ARENA"]){
+    const zs = us.filter(u => u.z === zona);
+    if (!zs.length) continue;
+    h += `<h2 class="seccion">${zona === "TALLER"
+        ? "En el taller · se trabaja hoy" : "En la arena · en espera"} (${zs.length})</h2>`;
+    for (const u of zs){
+      const col = colorNivel(nivel(u.k));
+      const abierta = abiertas.has("plan:"+u.p);
+      h += `<section class="unidad" data-abierta="${abierta?1:0}">
+        <button type="button" class="ucab" data-placa="plan:${esc(u.p)}"
+                aria-expanded="${abierta}">
+          <span class="punto" style="background:${col}"></span>
+          <span class="placa">${esc(u.p)}</span>
+          <span class="tipo">${esc(u.ti||"")}</span>
+          <span class="cuenta">${u.n} pend.
+            <svg class="flecha" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          </span>
+        </button>
+        <div class="trabajos">`;
+      if (u.o) h += `<div class="ometa" style="padding:6px 12px 0">Ya tiene ${esc(u.o)} abierta</div>`;
+      if (u.ac === "VENCIDO" || u.ac === "CRITICO")
+        h += `<div class="ometa" style="padding:6px 12px 0">Cambio de aceite ${esc(u.ac.toLowerCase())}</div>`;
+      if (!u.n) h += `<div class="ometa" style="padding:8px 12px">Sin pendientes.</div>`;
+      for (const w of u.w){
+        const n2 = nivel(w.k), c2 = colorNivel(n2);
+        h += `<article class="trabajo">
+          <span class="franja" style="background:${c2}"></span>
+          <div class="tcuerpo">
+            <div class="tmeta">
+              <span class="crit" style="color:${c2}">${w.k==null?"–":w.k}</span>
+              <span class="cat">${esc(w.c)}</span>
+              <span class="dias${w.d>30?" viejo":""}">${w.d} d</span>
+            </div>
+            <div class="texto">${esc(w.x)}</div>`;
+        if (w.r) h += `<span class="etq espera">Espera: ${esc(w.r)}</span>`;
+        h += `</div></article>`;
+      }
+      if (u.mas) h += `<div class="ometa" style="padding:6px 12px 10px">y ${u.mas} más</div>`;
+      h += `</div></section>`;
+    }
+  }
+  if (!us.length) h += `<p class="vacio"><b>Nada por aquí</b>Ninguna unidad coincide.</p>`;
+  lienzo.innerHTML = h;
+}
+
 function pintar(){
   pintarChips();
   // OJO: .chips es display:flex, asi que `hidden` NO la esconde -- la misma
   // trampa que tapaba la pantalla con la puerta del PIN. Se toca el display.
-  chips.style.display = (vista === "ace") ? "none" : "";
+  chips.style.display = (vista === "ace" || vista === "plan") ? "none" : "";
   if (vista === "pend") pintarPendientes();
   else if (vista === "ord") pintarOrdenes();
   else if (vista === "ace") pintarAceite();
+  else if (vista === "plan") pintarPlan();
   else pintarResumen();
 }
 if (ACE) document.getElementById("btnace").hidden = false;
+if (PLAN) document.getElementById("btnplan").hidden = false;
 
 chips.addEventListener("click", e => {
   const b = e.target.closest(".chip"); if (!b) return;
@@ -623,6 +714,9 @@ chips.addEventListener("click", e => {
   recordar(); pintar();
 });
 lienzo.addEventListener("click", e => {
+  const chipZona = e.target.closest("[data-zona]");
+  if (chipZona){ zonaPlan = chipZona.dataset.zona;
+                 window.scrollTo({top:0}); pintar(); return; }
   const chipSem = e.target.closest("[data-sem]");
   if (chipSem){ semFiltro = (semFiltro === chipSem.dataset.sem) ? "" : chipSem.dataset.sem;
                 window.scrollTo({top:0}); pintar(); return; }
