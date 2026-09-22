@@ -225,6 +225,9 @@ nav svg{width:21px;height:21px}
   <button type="button" data-vista="ord">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>Órdenes</button>
+  <button type="button" data-vista="ace" id="btnace" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M3 13h4l2-5 3 10 2-6 2 3h5"/></svg>Aceite</button>
   <button type="button" data-vista="res">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen</button>
@@ -422,12 +425,79 @@ function pintarResumen(){
   lienzo.innerHTML = h;
 }
 
+// ---- Status de aceite -------------------------------------------------
+// Los numeros los calcula otro programa y llegan dentro del paquete como
+// D.aceite (claves cortas, ver app/aceite.py:para_movil). Si no viene, el
+// boton no existe: mejor sin pestana que con una pestana vacia.
+const ACE = D.aceite || null;
+const SEM_COL = {"VENCIDO":"var(--c10)","CRITICO":"var(--c8)","PROXIMO":"var(--c6)",
+                 "OK":"var(--cbajo)","SIN DATO":"var(--cbajo)","INOPERATIVA":"var(--cbajo)"};
+const SEM_ORDEN = ["VENCIDO","CRITICO","PROXIMO","OK","SIN DATO","INOPERATIVA"];
+let semFiltro = "";
+
+function pintarAceite(){
+  if (!ACE){ lienzo.innerHTML = `<p class="vacio"><b>Sin status</b>Todavía no se ha publicado el status de aceite.</p>`; return; }
+  const t = sinTildes(texto).trim();
+  let us = ACE.u.filter(u =>
+    (!semFiltro || u.s === semFiltro) &&
+    (!t || sinTildes(u.p).includes(t) || sinTildes(u.op).includes(t) || sinTildes(u.cd).includes(t)));
+  us.sort((a,b) => SEM_ORDEN.indexOf(a.s) - SEM_ORDEN.indexOf(b.s) || (b.pc||0)-(a.pc||0));
+  const R = ACE.res || {};
+  let h = `<div class="resumen">
+      <div class="tile rojo"><b>${R.v||0}</b><span>vencidos</span></div>
+      <div class="tile ambar"><b>${R.c||0}</b><span>críticos</span></div>
+      <div class="tile"><b>${R.x||0}</b><span>próximos</span></div>
+      <div class="tile"><b>${R.ok||0}</b><span>al día de ${R.n||0}</span></div>
+    </div>
+    <div class="chips" style="padding:0 0 8px 0">`;
+  for (const sname of SEM_ORDEN){
+    const n = ACE.u.filter(u=>u.s===sname).length;
+    if (!n) continue;
+    h += `<button type="button" class="chip" data-sem="${sname}" aria-pressed="${semFiltro===sname}">`
+       + `${sname.charAt(0)+sname.slice(1).toLowerCase()}<span class="n">${n}</span></button>`;
+  }
+  h += `</div><h2 class="seccion">Semana ${ACE.sem||"—"} · ${us.length} unidades</h2>`;
+  for (const u of us){
+    const col = SEM_COL[u.s] || "var(--cbajo)";
+    const pct = Math.max(0, Math.min(100, Math.round(u.pc||0)));
+    const falta = (u.r==null) ? "" : (u.r < 0
+        ? `pasada por ${Math.abs(Math.round(u.r)).toLocaleString("es-PE")} km`
+        : `le quedan ${Math.round(u.r).toLocaleString("es-PE")} km`);
+    h += `<article class="orden">
+      <div class="ocab">
+        <span class="punto" style="background:${col}"></span>
+        <span class="placa">${esc(u.p)}</span>
+        <span class="estado" style="background:${col};color:#fff">${esc(u.s)}</span>
+        <span class="corr">${u.pc==null?"—":Math.round(u.pc)+"%"}</span>
+      </div>
+      <div class="ometa">${esc(u.op||"sin operación")}${u.cd?" · "+esc(u.cd):""}</div>
+      <div class="ometa">${esc(falta)}${u.py?" · toca "+dia(u.py):""}${u.uf?" · último cambio "+dia(u.uf):""}</div>
+      <div class="progreso"><i style="width:${pct}%;background:${col}"></i></div>
+    </article>`;
+  }
+  if (!semFiltro && (ACE.an||[]).length){
+    h += `<h2 class="seccion">Revisar el registro (${ACE.an.length})</h2>`;
+    for (const a of ACE.an){
+      h += `<article class="orden" style="padding:9px 12px">
+        <div class="ocab"><span class="placa">${esc(a.p)}</span>
+          <span class="corr" style="margin-left:auto">${esc(a.t)}</span></div>
+        <div class="ometa">${esc(a.d)}</div></article>`;
+    }
+  }
+  lienzo.innerHTML = h;
+}
+
 function pintar(){
   pintarChips();
+  // OJO: .chips es display:flex, asi que `hidden` NO la esconde -- la misma
+  // trampa que tapaba la pantalla con la puerta del PIN. Se toca el display.
+  chips.style.display = (vista === "ace") ? "none" : "";
   if (vista === "pend") pintarPendientes();
   else if (vista === "ord") pintarOrdenes();
+  else if (vista === "ace") pintarAceite();
   else pintarResumen();
 }
+if (ACE) document.getElementById("btnace").hidden = false;
 
 chips.addEventListener("click", e => {
   const b = e.target.closest(".chip"); if (!b) return;
@@ -436,6 +506,9 @@ chips.addEventListener("click", e => {
   recordar(); pintar();
 });
 lienzo.addEventListener("click", e => {
+  const chipSem = e.target.closest(".chip[data-sem]");
+  if (chipSem){ semFiltro = (semFiltro === chipSem.dataset.sem) ? "" : chipSem.dataset.sem;
+                pintar(); return; }
   const b = e.target.closest(".ucab"); if (!b) return;
   const placa = b.dataset.placa, s = b.closest(".unidad");
   const abierta = s.dataset.abierta === "1";
