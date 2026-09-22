@@ -92,6 +92,28 @@ input{font:inherit}
   margin-left:auto;color:var(--acento);padding:5px 9px}
 .orden-barra .chip.vuelta svg{flex:none}
 
+/* ---------- nota de frescura del status ---------- */
+.nota-ace{margin:-8px 0 12px;font-size:12px;color:var(--suave)}
+.nota-ace.vieja{color:var(--c8);font-weight:600}
+
+/* ---------- tarjeta que ademas filtra ---------- */
+.tile.tsel{text-align:left;font:inherit;color:inherit;cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.tile.tsel[aria-pressed="true"]{border-color:var(--azul);
+  box-shadow:0 0 0 2px var(--azul) inset,var(--sombra)}
+
+/* ---------- chips dentro del lienzo ----------
+   OJO: NO se puede reutilizar .chips aqui. Esa es la barra de arriba y lleva
+   position:sticky + fondo azul, asi que metida en el lienzo se queda flotando
+   encima de las tarjetas y las tapa. Paso el 22-09-2026 en la vista de aceite. */
+.chips-lienzo{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px}
+.chips-lienzo .chip{background:var(--sup);color:var(--tinta);border:1px solid var(--linea);
+  box-shadow:var(--sombra);font-size:12.5px;padding:5px 11px}
+.chips-lienzo .chip .n{opacity:.6}
+.chips-lienzo .chip[aria-pressed="true"]{background:var(--azul);color:#fff;
+  border-color:var(--azul);font-weight:600}
+.chips-lienzo .chip[aria-pressed="true"] .n{opacity:.7}
+
 /* ---------- lienzo ---------- */
 main{padding:14px 14px 92px;max-width:820px;margin:0 auto}
 .resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-bottom:16px}
@@ -491,25 +513,49 @@ let semFiltro = "";
 function pintarAceite(){
   if (!ACE){ lienzo.innerHTML = `<p class="vacio"><b>Sin status</b>Todavía no se ha publicado el status de aceite.</p>`; return; }
   const t = sinTildes(texto).trim();
-  let us = ACE.u.filter(u =>
-    (!semFiltro || u.s === semFiltro) &&
-    (!t || sinTildes(u.p).includes(t) || sinTildes(u.op).includes(t) || sinTildes(u.cd).includes(t)));
+  const casa = u => !t || sinTildes(u.p).includes(t) || sinTildes(u.op).includes(t)
+                  || sinTildes(u.cd||"").includes(t);
+  let us = ACE.u.filter(u => (!semFiltro || u.s === semFiltro) && casa(u));
   us.sort((a,b) => SEM_ORDEN.indexOf(a.s) - SEM_ORDEN.indexOf(b.s) || (b.pc||0)-(a.pc||0));
   const R = ACE.res || {};
+  const tile = (clave, valor, rot, clase) =>
+    `<button type="button" class="tile tsel${clase?" "+clase:""}" data-sem="${clave}"
+             aria-pressed="${semFiltro===clave}"><b>${valor||0}</b><span>${rot}</span></button>`;
+
   let h = `<div class="resumen">
-      <div class="tile rojo"><b>${R.v||0}</b><span>vencidos</span></div>
-      <div class="tile ambar"><b>${R.c||0}</b><span>críticos</span></div>
-      <div class="tile"><b>${R.x||0}</b><span>próximos</span></div>
-      <div class="tile"><b>${R.ok||0}</b><span>al día de ${R.n||0}</span></div>
-    </div>
-    <div class="chips" style="padding:0 0 8px 0">`;
+      ${tile("VENCIDO", R.v, "vencidos", "rojo")}
+      ${tile("CRITICO", R.c, "críticos", "ambar")}
+      ${tile("PROXIMO", R.x, "próximos", "")}
+      ${tile("OK", R.ok, "al día de "+(R.n||0), "")}
+    </div>`;
+
+  // Chips de estado, en el lienzo (NO la barra azul de arriba).
+  h += `<div class="chips-lienzo">`;
   for (const sname of SEM_ORDEN){
-    const n = ACE.u.filter(u=>u.s===sname).length;
+    const n = ACE.u.filter(u => u.s === sname).length;
     if (!n) continue;
     h += `<button type="button" class="chip" data-sem="${sname}" aria-pressed="${semFiltro===sname}">`
        + `${sname.charAt(0)+sname.slice(1).toLowerCase()}<span class="n">${n}</span></button>`;
   }
-  h += `</div><h2 class="seccion">Semana ${ACE.sem||"—"} · ${us.length} unidades</h2>`;
+  h += `</div>`;
+
+  const cab = `Semana ${ACE.sem||"—"}`
+      + (ACE.ini ? ` · ${dia(ACE.ini)} al ${dia(ACE.fin)}` : "")
+      + ` · ${us.length} de ${ACE.u.length}`;
+  h += `<h2 class="seccion">${esc(cab)}</h2>`;
+  // Se dice cuando se calculo. Un status viejo miente sobre los kilometros de
+  // esta semana, y desde el telefono no hay forma de saberlo si no se pone.
+  if (ACE.gen){
+    const d0 = new Date(ACE.gen + "T00:00:00"), hoy = new Date();
+    const dd = Math.round((hoy - d0) / 86400000);
+    h += `<p class="nota-ace${dd > 10 ? " vieja" : ""}">Calculado el ${dia(ACE.gen)}`
+       + (dd > 0 ? ` · hace ${dd} día${dd === 1 ? "" : "s"}` : " · hoy")
+       + (dd > 10 ? " — los kilómetros de esta semana ya no son estos" : "") + `</p>`;
+  }
+
+  if (!us.length){
+    h += `<p class="vacio"><b>Nada por aquí</b>Ninguna unidad coincide con este filtro.</p>`;
+  }
   for (const u of us){
     const col = SEM_COL[u.s] || "var(--cbajo)";
     const pct = Math.max(0, Math.min(100, Math.round(u.pc||0)));
@@ -524,13 +570,31 @@ function pintarAceite(){
         <span class="corr">${u.pc==null?"—":Math.round(u.pc)+"%"}</span>
       </div>
       <div class="ometa">${esc(u.op||"sin operación")}${u.cd?" · "+esc(u.cd):""}</div>
-      <div class="ometa">${esc(falta)}${u.py?" · toca "+dia(u.py):""}${u.uf?" · último cambio "+dia(u.uf):""}</div>
+      <div class="ometa">${esc(falta)}${u.f?" · cada "+Math.round(u.f).toLocaleString("es-PE")+" km":""}</div>
+      <div class="ometa">${u.py?"Toca "+dia(u.py):""}${u.uf?" · último cambio "+dia(u.uf):""}</div>
       <div class="progreso"><i style="width:${pct}%;background:${col}"></i></div>
     </article>`;
   }
-  if (!semFiltro && (ACE.an||[]).length){
-    h += `<h2 class="seccion">Revisar el registro (${ACE.an.length})</h2>`;
-    for (const a of ACE.an){
+
+  // Cuándo le toca a cada una. Solo sin filtros: con un filtro puesto la
+  // agenda completa confunde en vez de ayudar.
+  const ag = (ACE.ag||[]).filter(a => (a.u||[]).length);
+  if (!semFiltro && !t && ag.length){
+    h += `<h2 class="seccion">Cuándo toca</h2>`;
+    for (const a of ag.slice(0,10)){
+      h += `<article class="orden" style="padding:9px 12px">
+        <div class="ocab"><span style="font-weight:600">${esc(a.e)}</span>
+          <span class="corr" style="margin-left:auto">${a.u.length}</span></div>
+        <div class="ometa">${esc(a.u.join(", "))}</div></article>`;
+    }
+  }
+
+  // Anomalías: siguen el buscador. Buscar «D8R» y que salgan ocho placas
+  // ajenas debajo es justo lo que no se entiende.
+  const an = (ACE.an||[]).filter(a => !t || sinTildes(a.p).includes(t));
+  if (!semFiltro && an.length){
+    h += `<h2 class="seccion">Revisar el registro (${an.length})</h2>`;
+    for (const a of an){
       h += `<article class="orden" style="padding:9px 12px">
         <div class="ocab"><span class="placa">${esc(a.p)}</span>
           <span class="corr" style="margin-left:auto">${esc(a.t)}</span></div>
@@ -559,9 +623,9 @@ chips.addEventListener("click", e => {
   recordar(); pintar();
 });
 lienzo.addEventListener("click", e => {
-  const chipSem = e.target.closest(".chip[data-sem]");
+  const chipSem = e.target.closest("[data-sem]");
   if (chipSem){ semFiltro = (semFiltro === chipSem.dataset.sem) ? "" : chipSem.dataset.sem;
-                pintar(); return; }
+                window.scrollTo({top:0}); pintar(); return; }
   const chipOrd = e.target.closest(".chip[data-criterio]");
   if (chipOrd){
     // Pulsar el criterio que ya esta puesto le da la vuelta: es lo que
