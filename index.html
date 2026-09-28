@@ -161,6 +161,21 @@ h2.seccion{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing
   font-variant-numeric:tabular-nums}
 .etq.espera{background:var(--sup2);color:var(--suave)}
 .etq.veces{background:var(--sup2);color:var(--c8);font-weight:600}
+/* Historial: lista plana en orden de fecha, con un titulillo por dia.
+   No se agrupa por unidad a proposito -- lo que se pregunta aqui es «que se
+   ha hecho ultimamente», no «que le falta a esta placa». */
+.hdia{display:flex;align-items:baseline;gap:8px;margin:16px 0 7px;padding:0 2px}
+.hdia b{font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:.03em}
+.hdia span{font-size:11px;color:var(--suave)}
+.hdia:first-of-type{margin-top:4px}
+.hlista{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+        overflow:hidden}
+.hlista .trabajo:last-child{border-bottom:0}
+.hplaca{font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:.02em}
+.htipo{font-size:10.5px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
+.etq.quien{background:var(--sup2);color:var(--suave)}
+.hmas{margin:14px 0 4px;padding:11px 13px;background:var(--sup);border:1px solid var(--linea);
+      border-radius:var(--r);font-size:13px;color:var(--suave);text-align:center}
 
 /* ---------- ordenes ---------- */
 .orden{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
@@ -269,6 +284,9 @@ nav svg{width:21px;height:21px}
   <button type="button" data-vista="ace" id="btnace" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M3 13h4l2-5 3 10 2-6 2 3h5"/></svg>Aceite</button>
+  <button type="button" data-vista="hist" id="btnhist" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg>Historial</button>
   <button type="button" data-vista="res">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen</button>
@@ -291,17 +309,25 @@ let vista = "pend", cat = "", soloCriticos = false, texto = "", abiertas = new S
 // hay que mirar, y la gravedad ya se ve en el color de cada trabajo.
 let criterio = "ant";      // "ant" antiguedad · "grav" criticidad
 let viejosArriba = true;   // true = de mas antiguos a mas recientes
+// El historial va al reves que los pendientes y por eso lleva su propia
+// preferencia: en lo que falta manda lo mas viejo, en lo ya hecho manda lo
+// ultimo. Compartir una sola variable obligaba a darle la vuelta cada vez
+// que se cambia de pestana.
+let recientesArriba = true;
+const HIST = Array.isArray(D.hist) ? D.hist : [];
 try {
   const g = JSON.parse(localStorage.getItem("taller-timco") || "{}");
   if (g.cat) cat = g.cat;
   if (g.soloCriticos) soloCriticos = true;
   if (g.criterio === "ant" || g.criterio === "grav") criterio = g.criterio;
   if (typeof g.viejosArriba === "boolean") viejosArriba = g.viejosArriba;
+  if (typeof g.recientesArriba === "boolean") recientesArriba = g.recientesArriba;
 } catch(e){}
 function recordar(){
   try { localStorage.setItem("taller-timco",
         JSON.stringify({cat:cat, soloCriticos:soloCriticos,
-                        criterio:criterio, viejosArriba:viejosArriba})); } catch(e){}
+                        criterio:criterio, viejosArriba:viejosArriba,
+                        recientesArriba:recientesArriba})); } catch(e){}
 }
 
 const sinTildes = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
@@ -326,11 +352,14 @@ function filtrados(){
 }
 
 function pintarChips(){
+  // Los chips cuentan sobre lo que se esta mirando: en Historial, «Mecanico 84»
+  // tiene que ser 84 trabajos hechos, no 84 pendientes.
+  const base = vista === "hist" ? HIST : D.pend;
   const cuenta = {};
-  for (const p of D.pend) cuenta[p.c] = (cuenta[p.c]||0) + 1;
-  const criticos = D.pend.filter(p => p.k >= 8).length;
+  for (const p of base) cuenta[p.c] = (cuenta[p.c]||0) + 1;
+  const criticos = base.filter(p => p.k >= 8).length;
   let h = `<button type="button" class="chip" data-cat="" aria-pressed="${cat===""}">`
-        + `Todas<span class="n">${D.pend.length}</span></button>`
+        + `Todas<span class="n">${base.length}</span></button>`
         + `<button type="button" class="chip critico" data-critico="1" `
         + `aria-pressed="${soloCriticos}">Críticos<span class="n">${criticos}</span></button>`;
   for (const c of ORDEN_CAT){
@@ -693,6 +722,98 @@ function pintarPlan(){
   lienzo.innerHTML = h;
 }
 
+// Tope de tarjetas dibujadas de una vez. Seis meses son mas de mil quinientos
+// trabajos y un telefono de taller no tiene que construir mil quinientas
+// tarjetas para responder «que se hizo ayer»: se pintan las primeras y se
+// dice cuantas quedan, que es lo que empuja a filtrar.
+const TOPE_HIST = 300;
+
+function pintarHistorial(){
+  const busca = sinTildes(texto).trim();
+  const filas = HIST.filter(p => {
+    if (cat && p.c !== cat) return false;
+    if (soloCriticos && !(p.k >= 8)) return false;
+    if (busca && !(sinTildes(p.u).includes(busca) || sinTildes(p.x).includes(busca)
+                || sinTildes(p.c).includes(busca) || sinTildes(p.q).includes(busca)
+                || sinTildes(p.o).includes(busca))) return false;
+    return true;
+  });
+
+  const flechaH = recientesArriba
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.8" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>`
+      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.8" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`;
+  const rotuloH = recientesArriba ? "Más recientes primero" : "Más antiguos primero";
+  const barra = `<div class="orden-barra">
+      <span class="orden-rot">Ordenar</span>
+      <button type="button" class="chip" data-criterio="fecha" title="${rotuloH}"
+              aria-pressed="true">${flechaH}Fecha</button>
+      <button type="button" class="chip vuelta" id="invertir"
+              title="${rotuloH} · pulsa para invertir"
+              aria-label="Invertir el orden: ahora, ${rotuloH}">${flechaH}</button>
+    </div>`;
+
+  if (!filas.length){
+    lienzo.innerHTML = barra + `<p class="vacio"><b>Nada por aquí</b>`
+      + (texto ? `Ningún trabajo hecho coincide con «${esc(texto)}».`
+               : `No hay trabajos hechos con este filtro.`) + `</p>`;
+    return;
+  }
+
+  // Las fechas vienen como AAAA-MM-DD, asi que comparar el texto ya es
+  // comparar la fecha: no hace falta construir un Date por tarjeta.
+  const orden = recientesArriba
+      ? (a,b) => (b.f||"").localeCompare(a.f||"") || (a.u||"").localeCompare(b.u||"")
+      : (a,b) => (a.f||"").localeCompare(b.f||"") || (a.u||"").localeCompare(b.u||"");
+  filas.sort(orden);
+
+  const unidades = new Set(filas.map(p => p.u)).size;
+  const corte = new Date(Date.now() - 30*864e5).toISOString().slice(0,10);
+  const ultimos = filas.filter(p => (p.f||"") >= corte).length;
+
+  let h = `<div class="resumen">
+      <div class="tile"><b>${filas.length}</b><span>trabajos hechos</span></div>
+      <div class="tile"><b>${unidades}</b><span>unidades</span></div>
+      <div class="tile"><b>${ultimos}</b><span>últimos 30 días</span></div>
+    </div>` + barra;
+
+  const muestra = filas.slice(0, TOPE_HIST);
+  let diaActual = null, abierta = false;
+  for (const p of muestra){
+    if (p.f !== diaActual){
+      if (abierta) h += `</div>`;
+      diaActual = p.f;
+      const cuantos = muestra.filter(x => x.f === p.f).length;
+      h += `<div class="hdia"><b>${esc(dia(p.f))}</b>
+              <span>${cuantos} trabajo${cuantos === 1 ? "" : "s"}</span></div>
+            <div class="hlista">`;
+      abierta = true;
+    }
+    const nv = nivel(p.k), col = colorNivel(nv);
+    h += `<article class="trabajo">
+      <span class="franja" style="background:${col}"></span>
+      <div class="tcuerpo">
+        <div class="tmeta">
+          <span class="hplaca">${esc(p.u)}</span>
+          <span class="htipo">${p.t === "C" ? "Carreta" : "Tracto"}</span>
+          <span class="cat">${esc(p.c || "sin categoría")}</span>
+          <span class="dias">${p.k == null ? "" : "crit. " + p.k}</span>
+        </div>
+        <div class="texto">${esc(p.x)}</div>`;
+    if (p.o) h += `<span class="etq orden">En ${esc(p.o)}</span>`;
+    if (p.q) h += `<span class="etq quien">Lo hizo ${esc(p.q)}</span>`;
+    h += `</div></article>`;
+  }
+  if (abierta) h += `</div>`;
+  if (filas.length > TOPE_HIST){
+    h += `<p class="hmas">Se muestran los primeros ${TOPE_HIST} de
+          ${filas.length}. Busca una placa o toca una especialidad para
+          acotar.</p>`;
+  }
+  lienzo.innerHTML = h;
+}
+
 function pintar(){
   pintarChips();
   // OJO: .chips es display:flex, asi que `hidden` NO la esconde -- la misma
@@ -702,10 +823,12 @@ function pintar(){
   else if (vista === "ord") pintarOrdenes();
   else if (vista === "ace") pintarAceite();
   else if (vista === "plan") pintarPlan();
+  else if (vista === "hist") pintarHistorial();
   else pintarResumen();
 }
 if (ACE) document.getElementById("btnace").hidden = false;
 if (PLAN) document.getElementById("btnplan").hidden = false;
+if (HIST.length) document.getElementById("btnhist").hidden = false;
 
 chips.addEventListener("click", e => {
   const b = e.target.closest(".chip"); if (!b) return;
@@ -722,14 +845,18 @@ lienzo.addEventListener("click", e => {
                 window.scrollTo({top:0}); pintar(); return; }
   const chipOrd = e.target.closest(".chip[data-criterio]");
   if (chipOrd){
-    // Pulsar el criterio que ya esta puesto le da la vuelta: es lo que
-    // espera la mano, y evita tener que buscar otro boton.
-    if (criterio === chipOrd.dataset.criterio) viejosArriba = !viejosArriba;
+    // En el historial solo hay un criterio -- la fecha --, asi que pulsarlo
+    // es darle la vuelta, igual que pulsar el criterio ya activo en la
+    // pantalla de pendientes.
+    if (vista === "hist") recientesArriba = !recientesArriba;
+    else if (criterio === chipOrd.dataset.criterio) viejosArriba = !viejosArriba;
     else { criterio = chipOrd.dataset.criterio; viejosArriba = true; }
     recordar(); pintar(); return;
   }
   if (e.target.closest("#invertir")){
-    viejosArriba = !viejosArriba; recordar(); pintar(); return;
+    if (vista === "hist") recientesArriba = !recientesArriba;
+    else viejosArriba = !viejosArriba;
+    recordar(); pintar(); return;
   }
   const b = e.target.closest(".ucab"); if (!b) return;
   const placa = b.dataset.placa, s = b.closest(".unidad");
