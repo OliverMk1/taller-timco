@@ -303,6 +303,25 @@ const limpiar= document.getElementById("limpiar");
 const TECNICOS = D.tecnicos || {};
 const ORDEN_CAT = ["MECANICO","ELECTRICO","INFRAESTRUCTURA","NEUMATICO","REFRIGERADO",
                    "ACCESORIO","IMPLEMENTO","PINTURA","PERMISOLOGIA","DOCUMENTOS"];
+// Como se ESCRIBE cada categoria. El valor que viaja en el paquete no lleva
+// tilde y no se toca -- es el mismo que esta guardado en la base y el que se
+// compara aqui arriba --; la tilde se pone solo al pintarlo. Lo que no este
+// en la lista sale tal cual, con la primera en mayuscula.
+const ROTULO_CAT = {
+  MECANICO:"Mecánico", ELECTRICO:"Eléctrico", NEUMATICO:"Neumático",
+  PERMISOLOGIA:"Permisología", INFRAESTRUCTURA:"Infraestructura",
+  REFRIGERADO:"Refrigerado", ACCESORIO:"Accesorio", IMPLEMENTO:"Implemento",
+  PINTURA:"Pintura", DOCUMENTOS:"Documentos"
+};
+const rotCat = c => !c ? "" : (ROTULO_CAT[c] ||
+                               (c.charAt(0) + c.slice(1).toLowerCase()));
+// Lo mismo para el semaforo del aceite.
+const ROTULO_SEM = {
+  VENCIDO:"Vencido", CRITICO:"Crítico", PROXIMO:"Próximo", OK:"Al día",
+  "SIN DATO":"Sin dato", INOPERATIVA:"Inoperativa"
+};
+const rotSem = s => !s ? "" : (ROTULO_SEM[s] ||
+                               (s.charAt(0) + s.slice(1).toLowerCase()));
 
 let vista = "pend", cat = "", soloCriticos = false, texto = "", abiertas = new Set();
 // Por defecto lo mas antiguo primero: lo que lleva meses pedido es lo que
@@ -366,7 +385,7 @@ function pintarChips(){
     if (!cuenta[c]) continue;
     const quien = TECNICOS[c] ? " · " + TECNICOS[c].split(" · ")[0] : "";
     h += `<button type="button" class="chip" data-cat="${c}" aria-pressed="${cat===c}">`
-       + `${c.charAt(0)+c.slice(1).toLowerCase()}${esc(quien)}<span class="n">${cuenta[c]}</span></button>`;
+       + `${esc(rotCat(c))}${esc(quien)}<span class="n">${cuenta[c]}</span></button>`;
   }
   chips.innerHTML = h;
 }
@@ -453,7 +472,7 @@ function pintarPendientes(){
         <div class="tcuerpo">
           <div class="tmeta">
             <span class="crit" style="color:${col}">${p.k==null?"–":p.k}</span>
-            <span class="cat">${esc(p.c||"sin categoría")}</span>
+            <span class="cat">${esc(rotCat(p.c) || "sin categoría")}</span>
             <span class="dias${p.n>30?" viejo":""}">${p.n} d · desde ${dia(p.d)}</span>
           </div>
           <div class="texto">${esc(p.x)}</div>`;
@@ -514,7 +533,7 @@ function pintarResumen(){
   for (const c of ORDEN_CAT){
     const v = porCat[c]; if (!v) continue;
     h += `<article class="orden" style="padding:10px 12px">
-      <div class="ocab"><span style="font-weight:600">${c.charAt(0)+c.slice(1).toLowerCase()}</span>
+      <div class="ocab"><span style="font-weight:600">${esc(rotCat(c))}</span>
         <span class="corr" style="margin-left:auto">${v.n}${v.c?` · ${v.c} graves`:""}</span></div>
       ${TECNICOS[c] ? `<div class="ometa">${esc(TECNICOS[c])}</div>` : ""}
       <div class="progreso"><i style="width:${Math.round(v.n/maxCat*100)}%;
@@ -568,7 +587,7 @@ function pintarAceite(){
     const n = ACE.u.filter(u => u.s === sname).length;
     if (!n) continue;
     h += `<button type="button" class="chip" data-sem="${sname}" aria-pressed="${semFiltro===sname}">`
-       + `${sname.charAt(0)+sname.slice(1).toLowerCase()}<span class="n">${n}</span></button>`;
+       + `${esc(rotSem(sname))}<span class="n">${n}</span></button>`;
   }
   h += `</div>`;
 
@@ -601,7 +620,7 @@ function pintarAceite(){
       <div class="ocab">
         <span class="punto" style="background:${col}"></span>
         <span class="placa">${esc(u.p)}</span>
-        <span class="estado" style="background:${col};color:#fff">${esc(u.s)}</span>
+        <span class="estado" style="background:${col};color:#fff">${esc(rotSem(u.s))}</span>
         <span class="corr">${u.pc==null?"—":Math.round(u.pc)+"%"}</span>
       </div>
       <div class="ometa">${esc(u.op||"sin operación")}${u.cd?" · "+esc(u.cd):""}</div>
@@ -707,7 +726,7 @@ function pintarPlan(){
           <div class="tcuerpo">
             <div class="tmeta">
               <span class="crit" style="color:${c2}">${w.k==null?"–":w.k}</span>
-              <span class="cat">${esc(w.c)}</span>
+              <span class="cat">${esc(rotCat(w.c))}</span>
               <span class="dias${w.d>30?" viejo":""}">${w.d} d</span>
             </div>
             <div class="texto">${esc(w.x)}</div>`;
@@ -797,7 +816,7 @@ function pintarHistorial(){
         <div class="tmeta">
           <span class="hplaca">${esc(p.u)}</span>
           <span class="htipo">${p.t === "C" ? "Carreta" : "Tracto"}</span>
-          <span class="cat">${esc(p.c || "sin categoría")}</span>
+          <span class="cat">${esc(rotCat(p.c) || "sin categoría")}</span>
           <span class="dias">${p.k == null ? "" : "crit. " + p.k}</span>
         </div>
         <div class="texto">${esc(p.x)}</div>`;
