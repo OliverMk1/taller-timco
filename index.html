@@ -348,7 +348,7 @@ try {
   const g = JSON.parse(localStorage.getItem("taller-timco") || "{}");
   if (g.cat) cat = g.cat;
   if (g.soloCriticos) soloCriticos = true;
-  if (g.criterio === "ant" || g.criterio === "grav") criterio = g.criterio;
+  if (["ant", "grav", "cant"].includes(g.criterio)) criterio = g.criterio;
   if (typeof g.viejosArriba === "boolean") viejosArriba = g.viejosArriba;
   if (typeof g.recientesArriba === "boolean") recientesArriba = g.recientesArriba;
 } catch(e){}
@@ -368,6 +368,10 @@ const dia = s => s ? s.slice(8,10)+"/"+s.slice(5,7)+"/"+s.slice(2,4) : "";
 
 document.getElementById("sello").textContent =
   "al " + dia(D.generado.slice(0,10)) + " " + D.generado.slice(11,16);
+
+// Lo que el taller llama TRABAJO DE MANTENIMIENTO: lo que para la unidad.
+// Tiene que decir lo mismo que db.CATEGORIAS_MANTENIMIENTO del aplicativo.
+const MANT = new Set(["MECANICO", "ELECTRICO", "INFRAESTRUCTURA"]);
 
 function filtrados(){
   const t = sinTildes(texto).trim();
@@ -422,11 +426,17 @@ function pintarPendientes(){
   const signo = viejosArriba ? 1 : -1;
   const pesoAnt  = p => (p.n || 0);
   const pesoGrav = p => (p.k || 0);
-  const peso = criterio === "ant" ? pesoAnt : pesoGrav;
+  // «Cantidad» no pesa el trabajo sino la UNIDAD: lo que se pregunta es que
+  // placa debe mas, no cual tiene el trabajo mas viejo. Dentro de cada placa
+  // se sigue ordenando por antiguedad, que es lo util para trabajarla.
+  const peso = criterio === "grav" ? pesoGrav : pesoAnt;
   const cmpTrabajos = (a,b) => signo * (peso(b) - peso(a))
         || (b.k||0) - (a.k||0) || (b.n||0) - (a.n||0);
+  const pesoUnidad = e => criterio === "cant"
+        ? e[1].length
+        : Math.max(...e[1].map(peso));
   const unidades = [...porUnidad.entries()].sort((a,b) => {
-    const pa = Math.max(...a[1].map(peso)), pb = Math.max(...b[1].map(peso));
+    const pa = pesoUnidad(a), pb = pesoUnidad(b);
     return signo * (pb - pa) || b[1].length - a[1].length || a[0].localeCompare(b[0]);
   });
   const criticos = filas.filter(p => p.k >= 8).length;
@@ -442,11 +452,18 @@ function pintarPendientes(){
            stroke-width="2.8" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`;
   const rotulo = criterio === "ant"
       ? (viejosArriba ? "Más antiguos primero" : "Más recientes primero")
+      : criterio === "cant"
+      ? (viejosArriba ? "Más pendientes primero" : "Menos pendientes primero")
       : (viejosArriba ? "Más graves primero"   : "Menos graves primero");
   const marca = c => criterio === c ? flecha : "";
 
+  // La cartera partida en dos. Un solo «582 pendientes» no dice si son frenos
+  // o colchonetas: MANT es lo que para la unidad. El grupo lo fija
+  // db.CATEGORIAS_MANTENIMIENTO en el aplicativo; aqui va la misma lista.
+  const mant = filas.filter(p => MANT.has(p.c)).length;
   let h = `<div class="resumen">
-      <div class="tile"><b>${filas.length}</b><span>pendientes</span></div>
+      <div class="tile"><b>${mant}</b><span>mantenimiento</span></div>
+      <div class="tile"><b>${filas.length - mant}</b><span>otras categorías</span></div>
       <div class="tile"><b>${unidades.length}</b><span>unidades</span></div>
       <div class="tile rojo"><b>${criticos}</b><span>criticidad 8+</span></div>
       <div class="tile ambar"><b>${viejos}</b><span>+30 días</span></div>
@@ -457,6 +474,8 @@ function pintarPendientes(){
               aria-pressed="${criterio==="ant"}">${marca("ant")}Antigüedad</button>
       <button type="button" class="chip" data-criterio="grav" title="${rotulo}"
               aria-pressed="${criterio==="grav"}">${marca("grav")}Gravedad</button>
+      <button type="button" class="chip" data-criterio="cant" title="${rotulo}"
+              aria-pressed="${criterio==="cant"}">${marca("cant")}Cantidad</button>
       <button type="button" class="chip vuelta" id="invertir"
               title="${rotulo} · pulsa para invertir"
               aria-label="Invertir el orden: ahora, ${rotulo}">${flecha}</button>
