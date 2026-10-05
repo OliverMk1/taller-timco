@@ -165,14 +165,12 @@ h2.seccion{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing
    origen, asi que va monoespaciado y seleccionable, no como una etiqueta mas. */
 .cod{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;
   color:var(--suave);letter-spacing:.02em;user-select:all;-webkit-user-select:all}
-/* Kilometraje de la unidad. Va en la cabecera de la placa y NO en cada
-   trabajo: es de la unidad. Lleva siempre la semana del dato, porque no es
-   la lectura de hoy sino la del ultimo reporte de combustible. */
-.ukm{display:flex;flex-wrap:wrap;gap:4px 14px;padding:5px 12px 8px;
-  font-size:11.5px;color:var(--suave);border-bottom:1px solid var(--linea);
-  font-variant-numeric:tabular-nums}
-.ukm b{font-weight:600;color:var(--texto)}
-.ukm .sello{width:100%;font-size:10.5px;opacity:.8}
+/* Los dos kilometrajes, dentro de la tarjeta de Aceite. No van en la lista de
+   pendientes: no son del trabajo, son de la unidad, y su sitio es el recuadro
+   donde ya se habla de cada cuantos kilometros toca el cambio. */
+.okm{display:flex;flex-wrap:wrap;gap:3px 14px;margin-top:5px;
+  font-size:13px;color:var(--suave);font-variant-numeric:tabular-nums}
+.okm b{font-weight:700;color:var(--texto);font-family:var(--cond);font-size:15px}
 /* Historial: lista plana en orden de fecha, con un titulillo por dia.
    No se agrupa por unidad a proposito -- lo que se pregunta aqui es «que se
    ha hecho ultimamente», no «que le falta a esta placa». */
@@ -480,16 +478,6 @@ function pintarPendientes(){
         </span>
       </button>
       <div class="trabajos">`;
-    const k = KM[placa];
-    if (k){
-      h += `<div class="ukm">`;
-      if (k.km != null) h += `<span>Km actual <b>${miles(k.km)}</b></span>`;
-      if (k.uk != null) h += `<span>Último cambio <b>${miles(k.uk)}</b>${
-        k.uf ? " · " + dia(k.uf) : ""}</span>`;
-      if (k.ds != null) h += `<span>Lleva <b>${miles(k.ds)}</b> km</span>`;
-      h += `<span class="sello">Del status de aceite${
-        KM_SELLO ? ", " + KM_SELLO : ""} — no es la lectura de hoy</span></div>`;
-    }
     for (const p of ps){
       const n = nivel(p.k), col = colorNivel(n);
       h += `<article class="trabajo">
@@ -583,14 +571,8 @@ function pintarResumen(){
 // D.aceite (claves cortas, ver app/aceite.py:para_movil). Si no viene, el
 // boton no existe: mejor sin pestana que con una pestana vacia.
 const ACE = D.aceite || null;
-// Placa -> kilometraje, para poder pintarlo en la lista de pendientes sin
-// recorrer ACE.u en cada tarjeta. El kilometraje NO sale del checklist: viene
-// del status de aceite, que es semanal, por eso se muestra con su semana.
-const KM = {};
-if (ACE && Array.isArray(ACE.u))
-  for (const u of ACE.u)
-    if (u.km != null || u.uk != null) KM[u.p] = u;
-const KM_SELLO = ACE ? (ACE.sem ? `semana ${ACE.sem}` : "") : "";
+// El kilometraje va SOLO en la tarjeta de Aceite, que es su sitio: en la lista
+// de pendientes estorbaba y repetia por unidad un dato que no es del trabajo.
 const miles = n => (n == null || n === "") ? ""
   : Math.round(Number(n)).toLocaleString("es-PE").replace(/,/g, " ");
 const SEM_COL = {"VENCIDO":"var(--c10)","CRITICO":"var(--c8)","PROXIMO":"var(--c6)",
@@ -662,6 +644,10 @@ function pintarAceite(){
       <div class="ometa">${esc(u.op||"sin operación")}${u.cd?" · "+esc(u.cd):""}</div>
       <div class="ometa">${esc(falta)}${u.f?" · cada "+Math.round(u.f).toLocaleString("es-PE")+" km":""}</div>
       <div class="ometa">${u.py?"Toca "+dia(u.py):""}${u.uf?" · último cambio "+dia(u.uf):""}</div>
+      ${(u.km!=null||u.uk!=null) ? `<div class="okm">${
+          u.km!=null ? `<span>Km actual <b>${miles(u.km)}</b></span>` : ""}${
+          u.uk!=null ? `<span>Al cambiar <b>${miles(u.uk)}</b></span>` : ""}${
+          u.ds!=null ? `<span>Lleva <b>${miles(u.ds)}</b></span>` : ""}</div>` : ""}
       <div class="progreso"><i style="width:${pct}%;background:${col}"></i></div>
     </article>`;
   }
