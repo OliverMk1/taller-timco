@@ -771,6 +771,7 @@ function pintarPlan(){
               <span class="dias${w.d>30?" viejo":""}">${w.d} d</span>
             </div>
             <div class="texto">${esc(w.x)}</div>`;
+        if (w.g) h += `<div class="cod">${esc(w.g)}</div>`;
         if (w.r) h += `<span class="etq espera">Espera: ${esc(w.r)}</span>`;
         h += `</div></article>`;
       }
