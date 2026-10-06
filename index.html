@@ -171,6 +171,43 @@ h2.seccion{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing
 .okm{display:flex;flex-wrap:wrap;gap:3px 14px;margin-top:5px;
   font-size:13px;color:var(--suave);font-variant-numeric:tabular-nums}
 .okm b{font-weight:700;color:var(--texto);font-family:var(--cond);font-size:15px}
+
+/* Plan: el reparto del dia. Quien atiende que placa y cuanto le cabe.
+   La barra pasa del 100% a proposito -- que a alguien no le quepa el dia es
+   justo lo que hay que ver desde el taller. */
+.gente{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+       gap:8px;margin-bottom:16px}
+.gpers{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+       padding:9px 11px 10px}
+.gpers .gnom{font-family:var(--cond);font-weight:700;font-size:15px;letter-spacing:.03em}
+.gpers .gcat{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+             color:var(--suave);font-weight:600}
+.gpers .ghor{font-size:11.5px;color:var(--suave);font-variant-numeric:tabular-nums;
+             float:right}
+.gbar{height:4px;border-radius:3px;background:var(--sup2);margin:7px 0 6px;overflow:hidden}
+.gbar i{display:block;height:100%;border-radius:3px;background:var(--ok)}
+.gbar.justo i{background:var(--c8)}
+.gbar.pasado i{background:var(--c10)}
+.gruta{font-size:12.5px;overflow-wrap:anywhere}
+.gruta em{font-style:normal;color:var(--suave)}
+.etq.tec{background:var(--acento-sup);color:var(--acento);font-weight:600}
+/* Repartido a alguien que ese dia no viene. Se marca en rojo porque es lo
+   que deja arrastrar el reparto de un dia a otro sin mirar quien libra. */
+.etq.tec.falta{background:rgba(176,0,32,.14);color:var(--c10)}
+.quienes{display:flex;flex-wrap:wrap;gap:4px;padding:7px 12px 0}
+.manana{opacity:.92}
+.mcard{display:flex;align-items:center;gap:9px;background:var(--sup);
+       border:1px solid var(--linea);border-radius:var(--r);padding:9px 12px;
+       margin-bottom:7px}
+.mcard .placa{font-size:16px;white-space:nowrap}
+.mcard .mq{margin-left:auto;font-size:12px;color:var(--suave);text-align:right;
+           flex:none;max-width:52%}
+/* La placa NO se parte nunca: es lo que se busca con el dedo en una lista.
+   Quien la lleva va detras, recortado con puntos suspensivos si no cabe. */
+.ucab .placa{white-space:nowrap}
+.qtec{max-width:11ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      color:var(--acento);font-weight:600}
+.ucab .cuenta{white-space:nowrap}
 /* Historial: lista plana en orden de fecha, con un titulillo por dia.
    No se agrupa por unidad a proposito -- lo que se pregunta aqui es «que se
    ha hecho ultimamente», no «que le falta a esta placa». */
@@ -742,7 +779,32 @@ function pintarPlan(){
     </div>
     <div class="chips-lienzo">${chip("", "Todas", R.n||0)}
       ${chip("TALLER","En taller",R.t||0)}${chip("ARENA","En arena",R.a||0)}</div>`;
-  if (PLAN.f) h += `<p class="nota-ace">Plan del ${dia(PLAN.f)}</p>`;
+  if (PLAN.f) h += `<p class="nota-ace${PLAN.py?" vieja":""}">Plan del ${dia(PLAN.f)}`
+      + (PLAN.py ? " · todavía no empieza: es el proyectado" : "") + `</p>`;
+
+  // Quien atiende hoy. Sale antes que las unidades porque es lo primero que
+  // se pregunta al llegar al taller, y porque dice de una si alguien se quedo
+  // sin trabajo o si a otro no le cabe el dia.
+  const REP = PLAN.cg || [];
+// Quien esta repartido y ese dia no viene: pares [placa, tecnico].
+const FALTAN = new Set((PLAN.au || []).map(x => x[0] + "|" + x[1]));
+  if (REP.length && !zonaPlan && !t){
+    h += `<h2 class="seccion">Quién atiende hoy (${REP.length})</h2><div class="gente">`;
+    for (const g of REP){
+      const pc = g.hd ? Math.round(g.h / g.hd * 100) : 0;
+      const tono = g.e === "pasado" ? " pasado" : (g.e === "justo" ? " justo" : "");
+      h += `<article class="gpers">
+        <span class="ghor">${g.h}/${g.hd} h</span>
+        <div class="gnom">${esc(g.n)}</div>
+        <div class="gcat">${esc(rotCat(g.c))}</div>
+        <div class="gbar${tono}"><i style="width:${Math.min(100, pc)}%"></i></div>
+        <div class="gruta">` + (g.r && g.r.length
+          ? g.r.map((p, i) => `${i+1}· ${esc(p)}`).join(" &nbsp; ")
+          : `<em>sin unidad asignada</em>`)
+        + `</div></article>`;
+    }
+    h += `</div>`;
+  }
 
   if ((PLAN.av||[]).length && !zonaPlan && !t){
     h += `<h2 class="seccion">Ojo con esto</h2>`;
@@ -766,12 +828,19 @@ function pintarPlan(){
           <span class="punto" style="background:${col}"></span>
           <span class="placa">${esc(u.p)}</span>
           <span class="tipo">${esc(u.ti||"")}</span>
-          <span class="cuenta">${u.n} pend.
+          <span class="cuenta">${(u.as||[]).length
+            ? `<span class="qtec">${esc(u.as[0])}${u.as.length>1?" +"+(u.as.length-1):""}</span>`
+            : ""}${u.n} pend.
             <svg class="flecha" width="14" height="14" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </span>
         </button>
         <div class="trabajos">`;
+      if ((u.as||[]).length)
+        h += `<div class="quienes">` + u.as.map(x =>
+          `<span class="etq tec${FALTAN.has(u.p+"|"+x)?" falta":""}">${esc(x)}`
+          + (FALTAN.has(u.p+"|"+x) ? " · no viene" : "") + `</span>`).join("")
+          + `</div>`;
       if (u.o) h += `<div class="ometa" style="padding:6px 12px 0">Ya tiene ${esc(u.o)} abierta</div>`;
       if (u.ac === "VENCIDO" || u.ac === "CRITICO")
         h += `<div class="ometa" style="padding:6px 12px 0">Cambio de aceite ${esc(u.ac.toLowerCase())}</div>`;
@@ -795,6 +864,27 @@ function pintarPlan(){
       h += `</div></section>`;
     }
   }
+  // El proyectado de manana. Va recortado a proposito: lo que hace falta
+  // saber hoy no son los trabajos de cada unidad, es que placas entran y
+  // quien las agarra, para dejar pedido esta tarde lo que falte.
+  const MAN = PLAN.pr || null;
+  if (MAN && !zonaPlan && !t){
+    h += `<h2 class="seccion">Mañana · ${dia(MAN.f)} (proyectado)</h2>
+          <div class="manana">`;
+    h += `<p class="nota-ace">${MAN.n} unidades · ${MAN.t} en taller · `
+       + `${MAN.tr} trabajos · ${MAN.c} críticos</p>`;
+    for (const mu of MAN.u){
+      h += `<div class="mcard">
+        <span class="punto" style="background:${colorNivel(nivel(mu.k))}"></span>
+        <span class="placa">${esc(mu.p)}</span>
+        <span class="tipo">${esc(mu.ti||"")}</span>
+        <span class="mq">${mu.n} pend.`
+        + ((mu.as||[]).length ? `<br>${esc(mu.as.join(", "))}` : "")
+        + `</span></div>`;
+    }
+    h += `</div>`;
+  }
+
   if (!us.length) h += `<p class="vacio"><b>Nada por aquí</b>Ninguna unidad coincide.</p>`;
   lienzo.innerHTML = h;
 }
