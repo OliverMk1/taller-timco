@@ -334,6 +334,9 @@ const rotSem = s => !s ? "" : (ROTULO_SEM[s] ||
                                (s.charAt(0) + s.slice(1).toLowerCase()));
 
 let vista = "pend", cat = "", soloCriticos = false, texto = "", abiertas = new Set();
+// "" todas · "mant" mecanico/electrico/infraestructura · "otras" el resto.
+// Es un filtro aparte del de categoria: se pueden combinar.
+let grupo = "";
 // Por defecto lo mas antiguo primero: lo que lleva meses pedido es lo que
 // hay que mirar, y la gravedad ya se ve en el color de cada trabajo.
 let criterio = "ant";      // "ant" antiguedad · "grav" criticidad
@@ -349,12 +352,13 @@ try {
   if (g.cat) cat = g.cat;
   if (g.soloCriticos) soloCriticos = true;
   if (["ant", "grav", "cant"].includes(g.criterio)) criterio = g.criterio;
+  if (g.grupo === "mant" || g.grupo === "otras") grupo = g.grupo;
   if (typeof g.viejosArriba === "boolean") viejosArriba = g.viejosArriba;
   if (typeof g.recientesArriba === "boolean") recientesArriba = g.recientesArriba;
 } catch(e){}
 function recordar(){
   try { localStorage.setItem("taller-timco",
-        JSON.stringify({cat:cat, soloCriticos:soloCriticos,
+        JSON.stringify({cat:cat, soloCriticos:soloCriticos, grupo:grupo,
                         criterio:criterio, viejosArriba:viejosArriba,
                         recientesArriba:recientesArriba})); } catch(e){}
 }
@@ -377,6 +381,8 @@ function filtrados(){
   const t = sinTildes(texto).trim();
   return D.pend.filter(p => {
     if (cat && p.c !== cat) return false;
+    if (grupo === "mant"  && !MANT.has(p.c)) return false;
+    if (grupo === "otras" &&  MANT.has(p.c)) return false;
     if (soloCriticos && !(p.k >= 8)) return false;
     // Se busca tambien por el codigo del checklist: es lo que trae el
     // conductor cuando pregunta por «el 2610010928».
@@ -394,8 +400,16 @@ function pintarChips(){
   const cuenta = {};
   for (const p of base) cuenta[p.c] = (cuenta[p.c]||0) + 1;
   const criticos = base.filter(p => p.k >= 8).length;
-  let h = `<button type="button" class="chip" data-cat="" aria-pressed="${cat===""}">`
+  // La cartera partida en dos, y ademas se puede pulsar: es el indicador y
+  // el filtro a la vez. «Todas» limpia los dos filtros de golpe.
+  const nMant = base.filter(p => MANT.has(p.c)).length;
+  let h = `<button type="button" class="chip" data-cat="" data-grupo="" `
+        + `aria-pressed="${cat==="" && grupo===""}">`
         + `Todas<span class="n">${base.length}</span></button>`
+        + `<button type="button" class="chip" data-grupo="mant" `
+        + `aria-pressed="${grupo==="mant"}">Mantenimiento<span class="n">${nMant}</span></button>`
+        + `<button type="button" class="chip" data-grupo="otras" `
+        + `aria-pressed="${grupo==="otras"}">Otras<span class="n">${base.length - nMant}</span></button>`
         + `<button type="button" class="chip critico" data-critico="1" `
         + `aria-pressed="${soloCriticos}">Críticos<span class="n">${criticos}</span></button>`;
   for (const c of ORDEN_CAT){
@@ -557,8 +571,10 @@ function pintarResumen(){
   }
   const criticos = D.pend.filter(p=>p.k>=8).length;
   const maxCat = Math.max(...Object.values(porCat).map(v=>v.n));
+  const mant = D.pend.filter(p => MANT.has(p.c)).length;
   let h = `<div class="resumen">
-      <div class="tile"><b>${D.pend.length}</b><span>pendientes</span></div>
+      <div class="tile"><b>${mant}</b><span>mantenimiento</span></div>
+      <div class="tile"><b>${D.pend.length - mant}</b><span>otras categorías</span></div>
       <div class="tile"><b>${Object.keys(porUni).length}</b><span>de ${D.total_unidades} unidades</span></div>
       <div class="tile rojo"><b>${criticos}</b><span>criticidad 8+</span></div>
       <div class="tile"><b>${D.ordenes.length}</b><span>órdenes abiertas</span></div>
@@ -793,6 +809,8 @@ function pintarHistorial(){
   const busca = sinTildes(texto).trim();
   const filas = HIST.filter(p => {
     if (cat && p.c !== cat) return false;
+    if (grupo === "mant"  && !MANT.has(p.c)) return false;
+    if (grupo === "otras" &&  MANT.has(p.c)) return false;
     if (soloCriticos && !(p.k >= 8)) return false;
     if (busca && !(sinTildes(p.u).includes(busca) || sinTildes(p.x).includes(busca)
                 || sinTildes(p.c).includes(busca) || sinTildes(p.q).includes(busca)
@@ -894,7 +912,11 @@ if (HIST.length) document.getElementById("btnhist").hidden = false;
 chips.addEventListener("click", e => {
   const b = e.target.closest(".chip"); if (!b) return;
   if (b.dataset.critico) soloCriticos = !soloCriticos;
-  else { cat = b.dataset.cat; }
+  else if (b.dataset.grupo !== undefined && b.dataset.cat === undefined){
+    // Pulsar el grupo que ya esta puesto lo quita, como los demas chips.
+    grupo = (grupo === b.dataset.grupo) ? "" : b.dataset.grupo;
+  }
+  else { cat = b.dataset.cat; grupo = ""; }
   recordar(); pintar();
 });
 lienzo.addEventListener("click", e => {
