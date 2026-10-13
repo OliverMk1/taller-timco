@@ -396,7 +396,7 @@ nav svg{width:21px;height:21px}
   <button type="button" data-vista="fmt" id="btnfmt" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/>
-      <path d="m9 13 2 2 4-4"/></svg>Checklist</button>
+      <path d="m9 13 2 2 4-4"/></svg>Otras alertas</button>
   <button type="button" data-vista="res">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen</button>
@@ -1046,13 +1046,20 @@ function pintarHistorial(){
   lienzo.innerHTML = h;
 }
 
-// ---- Formato del checklist --------------------------------------------
+// ---- Otras alertas (formato del checklist) -------------------------------
 // D.fmt (claves cortas, ver app/formato.py:para_movil). Lo que el conductor
 // MARCO en su ultimo checklist. Los dias se cuentan aqui, al mirar: el paquete
 // puede tener horas. Si no viene, el boton no existe.
 const FMT = D.fmt || null;
 const TEMAS_FMT = ["Documentos","Extintor","Llantas","Repsol","Carga","Seguridad"];
 let temaFmt = "", soloRojasFmt = false;
+// "grav" las rojas arriba · "ant" la alerta que lleva mas tiempo marcandose ·
+// "cant" la placa con mas alertas. Como en Pendientes, se recuerda.
+let ordenFmt = "grav";
+try { const g = JSON.parse(localStorage.getItem("taller-timco-fmt") || "{}");
+      if (["grav","ant","cant"].includes(g.orden)) ordenFmt = g.orden; } catch(e){}
+// Dias que lleva marcandose seguido la alerta mas vieja de la placa (a[6]).
+const abiertaFmt = u => Math.max(0, ...u.a.map(a => a[6] ? diasDesde(a[6]) : 0));
 const diasDesde = iso => Math.max(0, Math.floor((Date.now() - new Date(iso + "T00:00:00")) / 86400000));
 
 function pintarFormato(){
@@ -1065,7 +1072,13 @@ function pintarFormato(){
   const vis = base.filter(u => (!temaFmt || u.a.some(a => a[0] === temaFmt))
                             && (!soloRojasFmt || esRoja(u)));
   const peso = u => u.a.filter(a => a[3] === "r").length * 100 + u.a.length * 10;
-  vis.sort((x,y) => peso(y) - peso(x) || x.d - y.d || x.p.localeCompare(y.p));
+  for (const u of vis) u.ab = abiertaFmt(u);
+  if (ordenFmt === "ant")
+    vis.sort((x,y) => y.ab - x.ab || peso(y) - peso(x) || x.p.localeCompare(y.p));
+  else if (ordenFmt === "cant")
+    vis.sort((x,y) => y.a.length - x.a.length || peso(y) - peso(x) || x.d - y.d);
+  else
+    vis.sort((x,y) => peso(y) - peso(x) || x.d - y.d || x.p.localeCompare(y.p));
 
   let h = `<div class="resumen">
       <div class="tile rojo"><b>${base.filter(esRoja).length}</b><span>con alerta roja</span></div>
@@ -1082,6 +1095,12 @@ function pintarFormato(){
   }
   h += `<button type="button" class="chip" data-rfmt="1" aria-pressed="${soloRojasFmt}">Solo rojas</button>
     </div>
+    <div class="orden-barra">
+      <span class="orden-rot">Ordenar</span>
+      <button type="button" class="chip" data-ofmt="grav" aria-pressed="${ordenFmt==="grav"}">Gravedad</button>
+      <button type="button" class="chip" data-ofmt="ant" aria-pressed="${ordenFmt==="ant"}">Antigüedad</button>
+      <button type="button" class="chip" data-ofmt="cant" aria-pressed="${ordenFmt==="cant"}">Cantidad</button>
+    </div>
     <p class="nota-ace">Último checklist de cada unidad${FMT.h ? ` · leído hasta el ${dia(FMT.h)}` : ""}.
       Si tiene muchos días, puede haber cambiado.${(FMT.n||[]).length ? ` ${FMT.n.length} unidades nunca hicieron checklist.` : ""}</p>`;
   if (!vis.length){
@@ -1095,7 +1114,9 @@ function pintarFormato(){
       <div class="fcab"><span class="placa">${esc(u.p)}</span>
         <span class="tipo">${tipoU(u)}${u.y ? " · " + esc(u.y) : ""}</span>
         <span class="fdias ${clase}">${u.d ? `hace ${u.d} d` : "hoy"}</span></div>
-      <div class="cod">checklist ${esc(u.g)} · ${dia(u.f)}</div>
+      <div class="cod">checklist ${esc(u.g)} · ${dia(u.f)}${
+        ordenFmt === "ant" && u.ab ? ` · la más antigua lleva ${u.ab} d` :
+        ordenFmt === "cant" ? ` · ${u.a.length} alerta${u.a.length === 1 ? "" : "s"}` : ""}</div>
       <ul class="flista">`;
     for (const tm of TEMAS_FMT){
       if (temaFmt && tm !== temaFmt) continue;
@@ -1106,7 +1127,7 @@ function pintarFormato(){
         const col = a[3] === "r" ? "var(--c10)" : "var(--c8)";
         h += `<li><span class="punto" style="background:${col}"></span>
           <span><span class="fnom">${esc(a[1])}</span> <span class="fdet">${esc(a[2])}</span></span>
-          <span class="fvez" title="veces que lo marcó en los últimos 90 días">${a[4]}/${a[5]}</span></li>`;
+          ${a[5] ? `<span class="fvez" title="veces que lo marcó en los últimos 90 días">${a[4]}/${a[5]}</span>` : ""}</li>`;
       }
     }
     h += `</ul></section>`;
@@ -1147,6 +1168,10 @@ lienzo.addEventListener("click", e => {
   if (chipFmt){ temaFmt = (temaFmt === chipFmt.dataset.tfmt) ? "" : chipFmt.dataset.tfmt;
                 pintar(); return; }
   if (e.target.closest("[data-rfmt]")){ soloRojasFmt = !soloRojasFmt; pintar(); return; }
+  const chipOFmt = e.target.closest("[data-ofmt]");
+  if (chipOFmt){ ordenFmt = chipOFmt.dataset.ofmt;
+                 try { localStorage.setItem("taller-timco-fmt", JSON.stringify({orden: ordenFmt})); } catch(e){}
+                 pintar(); return; }
   const chipZona = e.target.closest("[data-zona]");
   if (chipZona){ zonaPlan = chipZona.dataset.zona;
                  window.scrollTo({top:0}); pintar(); return; }
