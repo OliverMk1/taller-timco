@@ -242,6 +242,65 @@ h2.seccion{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing
 .vacio b{display:block;font-family:var(--cond);font-size:19px;color:var(--ok);
   letter-spacing:.04em;margin-bottom:5px}
 
+/* ---------- formato del checklist ----------
+   Una tarjeta por placa con SOLO lo que falla, un punto de color por cosa.
+   El nombre largo y el texto del formulario no van: no caben en un telefono
+   y el taller no los necesita para saber que traer. */
+.fcard{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  padding:10px 12px 9px;margin-bottom:10px;box-shadow:var(--sombra)}
+.fcab{display:flex;align-items:center;gap:9px}
+.fcab .placa{white-space:nowrap}
+.fdias{margin-left:auto;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+.fdias.ok{color:var(--ok)} .fdias.medio{color:var(--c8)} .fdias.viejo{color:var(--c10)}
+.fcard .cod{margin-top:1px}
+.flista{list-style:none;margin:7px 0 0;padding:0}
+.flista li{display:flex;align-items:baseline;gap:7px;padding:3px 0;font-size:14px}
+.flista .punto{position:relative;top:-1px}
+.flista .fnom{font-weight:600}
+.flista .fdet{color:var(--suave);overflow-wrap:anywhere}
+.flista .fvez{margin-left:auto;font-size:11px;color:var(--suave);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.ftema{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  font-weight:600;margin:6px 0 1px}
+
+/* ---------- pantalla grande ----------
+   La misma pagina y el mismo enlace: en el telefono se ve como siempre; en una
+   tablet o una PC las tarjetas se reparten en columnas y, desde 1024 px, el menu
+   pasa de abajo a un costado. Solo CSS: los datos y la logica no cambian.
+   Los hijos del lienzo que NO son tarjetas (resumen, chips, titulos, notas)
+   ocupan todo el ancho; las tarjetas se acomodan en la grilla. */
+@media (min-width:760px){
+  main{max-width:none;padding:18px 22px 96px}
+  #lienzo{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));
+          gap:12px;align-items:start}
+  #lienzo > *{grid-column:1/-1}
+  #lienzo > .unidad, #lienzo > .orden, #lienzo > .fcard, #lienzo > .mcard{
+          grid-column:auto;margin-bottom:0}
+  .resumen{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:6px}
+  .tile b{font-size:30px}
+  .barra{padding:12px 22px 0}
+  .chips{padding:0 22px 11px}
+}
+@media (min-width:1024px){
+  body{padding-left:216px;font-size:15.5px}
+  /* «body nav» y no «nav»: este bloque va ANTES de las reglas del menu de
+     abajo, y con la misma fuerza ellas ganaban y estiraban cada boton a todo
+     el alto de la pantalla. */
+  body nav{top:0;bottom:0;right:auto;width:216px;flex-direction:column;
+      justify-content:flex-start;gap:2px;border-top:0;border-right:1px solid var(--linea);
+      padding:18px 10px}
+  body nav button{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;
+      padding:11px 14px;font-size:14.5px;border-radius:8px}
+  body nav button[aria-current="page"]{background:var(--acento-sup);font-weight:600}
+  main{padding:20px 28px 40px}
+  .barra{padding:14px 28px 0}
+  .chips{padding:0 28px 12px}
+  .marca h1{font-size:22px}
+  .buscar{max-width:620px}
+  #lienzo{grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}
+}
+
 /* ---------- nav inferior ---------- */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;
   background:var(--sup);border-top:1px solid var(--linea);
@@ -334,6 +393,10 @@ nav svg{width:21px;height:21px}
   <button type="button" data-vista="hist" id="btnhist" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg>Historial</button>
+  <button type="button" data-vista="fmt" id="btnfmt" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/>
+      <path d="m9 13 2 2 4-4"/></svg>Checklist</button>
   <button type="button" data-vista="res">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen</button>
@@ -983,21 +1046,91 @@ function pintarHistorial(){
   lienzo.innerHTML = h;
 }
 
+// ---- Formato del checklist --------------------------------------------
+// D.fmt (claves cortas, ver app/formato.py:para_movil). Lo que el conductor
+// MARCO en su ultimo checklist. Los dias se cuentan aqui, al mirar: el paquete
+// puede tener horas. Si no viene, el boton no existe.
+const FMT = D.fmt || null;
+const TEMAS_FMT = ["Documentos","Extintor","Llantas","Repsol","Carga","Seguridad"];
+let temaFmt = "", soloRojasFmt = false;
+const diasDesde = iso => Math.max(0, Math.floor((Date.now() - new Date(iso + "T00:00:00")) / 86400000));
+
+function pintarFormato(){
+  if (!FMT){ lienzo.innerHTML = `<p class="vacio"><b>Sin datos</b>Todavía no se ha publicado el formato del checklist.</p>`; return; }
+  const t = sinTildes(texto).trim();
+  const base = FMT.u.map(u => Object.assign({}, u, {d: diasDesde(u.f)}))
+    .filter(u => !t || sinTildes(u.p).includes(t) || (u.g || "").includes(t));
+  const conTema = tm => base.filter(u => u.a.some(a => a[0] === tm)).length;
+  const esRoja = u => u.a.some(a => a[3] === "r");
+  const vis = base.filter(u => (!temaFmt || u.a.some(a => a[0] === temaFmt))
+                            && (!soloRojasFmt || esRoja(u)));
+  const peso = u => u.a.filter(a => a[3] === "r").length * 100 + u.a.length * 10;
+  vis.sort((x,y) => peso(y) - peso(x) || x.d - y.d || x.p.localeCompare(y.p));
+
+  let h = `<div class="resumen">
+      <div class="tile rojo"><b>${base.filter(esRoja).length}</b><span>con alerta roja</span></div>
+      <div class="tile"><b>${conTema("Extintor")}</b><span>extintor</span></div>
+      <div class="tile"><b>${conTema("Llantas")}</b><span>llantas</span></div>
+      <div class="tile"><b>${conTema("Documentos")}</b><span>documentos</span></div>
+      <div class="tile ambar"><b>${base.filter(u => u.d > 15).length}</b><span>checklist +15 días</span></div>
+    </div>
+    <div class="chips-lienzo">
+      <button type="button" class="chip" data-tfmt="" aria-pressed="${!temaFmt}">Todo<span class="n">${base.length}</span></button>`;
+  for (const tm of TEMAS_FMT){
+    const n = conTema(tm); if (!n) continue;
+    h += `<button type="button" class="chip" data-tfmt="${tm}" aria-pressed="${temaFmt===tm}">${tm}<span class="n">${n}</span></button>`;
+  }
+  h += `<button type="button" class="chip" data-rfmt="1" aria-pressed="${soloRojasFmt}">Solo rojas</button>
+    </div>
+    <p class="nota-ace">Último checklist de cada unidad${FMT.h ? ` · leído hasta el ${dia(FMT.h)}` : ""}.
+      Si tiene muchos días, puede haber cambiado.${(FMT.n||[]).length ? ` ${FMT.n.length} unidades nunca hicieron checklist.` : ""}</p>`;
+  if (!vis.length){
+    lienzo.innerHTML = h + `<p class="vacio"><b>Nada por aquí</b>Ninguna unidad con ese filtro.</p>`;
+    return;
+  }
+  const tipoU = u => u.l === "K" ? "Camión" : u.l === "C" ? "Carreta" : "Tracto";
+  for (const u of vis){
+    const clase = u.d <= 7 ? "ok" : u.d <= 15 ? "medio" : "viejo";
+    h += `<section class="fcard">
+      <div class="fcab"><span class="placa">${esc(u.p)}</span>
+        <span class="tipo">${tipoU(u)}${u.y ? " · " + esc(u.y) : ""}</span>
+        <span class="fdias ${clase}">${u.d ? `hace ${u.d} d` : "hoy"}</span></div>
+      <div class="cod">checklist ${esc(u.g)} · ${dia(u.f)}</div>
+      <ul class="flista">`;
+    for (const tm of TEMAS_FMT){
+      if (temaFmt && tm !== temaFmt) continue;
+      const lista = u.a.filter(a => a[0] === tm);
+      if (!lista.length) continue;
+      h += `<li class="ftema">${tm}</li>`;
+      for (const a of lista){
+        const col = a[3] === "r" ? "var(--c10)" : "var(--c8)";
+        h += `<li><span class="punto" style="background:${col}"></span>
+          <span><span class="fnom">${esc(a[1])}</span> <span class="fdet">${esc(a[2])}</span></span>
+          <span class="fvez" title="veces que lo marcó en los últimos 90 días">${a[4]}/${a[5]}</span></li>`;
+      }
+    }
+    h += `</ul></section>`;
+  }
+  lienzo.innerHTML = h;
+}
+
 function pintar(){
   pintarChips();
   // OJO: .chips es display:flex, asi que `hidden` NO la esconde -- la misma
   // trampa que tapaba la pantalla con la puerta del PIN. Se toca el display.
-  chips.style.display = (vista === "ace" || vista === "plan") ? "none" : "";
+  chips.style.display = (vista === "ace" || vista === "plan" || vista === "fmt") ? "none" : "";
   if (vista === "pend") pintarPendientes();
   else if (vista === "ord") pintarOrdenes();
   else if (vista === "ace") pintarAceite();
   else if (vista === "plan") pintarPlan();
   else if (vista === "hist") pintarHistorial();
+  else if (vista === "fmt") pintarFormato();
   else pintarResumen();
 }
 if (ACE) document.getElementById("btnace").hidden = false;
 if (PLAN) document.getElementById("btnplan").hidden = false;
 if (HIST.length) document.getElementById("btnhist").hidden = false;
+if (FMT && FMT.u) document.getElementById("btnfmt").hidden = false;
 
 chips.addEventListener("click", e => {
   const b = e.target.closest(".chip"); if (!b) return;
@@ -1010,6 +1143,10 @@ chips.addEventListener("click", e => {
   recordar(); pintar();
 });
 lienzo.addEventListener("click", e => {
+  const chipFmt = e.target.closest("[data-tfmt]");
+  if (chipFmt){ temaFmt = (temaFmt === chipFmt.dataset.tfmt) ? "" : chipFmt.dataset.tfmt;
+                pintar(); return; }
+  if (e.target.closest("[data-rfmt]")){ soloRojasFmt = !soloRojasFmt; pintar(); return; }
   const chipZona = e.target.closest("[data-zona]");
   if (chipZona){ zonaPlan = chipZona.dataset.zona;
                  window.scrollTo({top:0}); pintar(); return; }
