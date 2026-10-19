@@ -3,293 +3,1344 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#1f3a56">
-<title>Advanced Timco · Taller</title>
+<meta name="theme-color" content="#1F3864">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Consulta de pendientes y ordenes del taller. Solo lectura.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Taller TIMCO">
+<title>Taller TIMCO</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --bg:#eef1f4; --surface:#fff; --surface-2:#f5f7f9; --line:#d6dce3; --fg:#16202b; --muted:#5b6876;
-  --accent:#e08a00; --accent-ink:#1b1300; --steel:#1f3a56;
-  --ok:#1f7a4d; --ok-bg:#e3f3ea; --warn:#a15c00; --warn-bg:#fdf0dc; --crit:#b3261e; --crit-bg:#fbe5e3;
-  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif; --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
-  color-scheme:light;
+  --papel:#F5F7FA; --sup:#FFFFFF; --sup2:#EDF1F6; --tinta:#151B23; --suave:#5B6676;
+  --linea:#DDE3EB; --azul:#1F3864; --acento:#2E6FD9; --acento-sup:#E8F0FD;
+  --c10:#C0392B; --c8:#AE6A12; --c6:#3F6288; --cbajo:#78838F; --ok:#2F6B4F;
+  --sombra:0 1px 2px rgba(21,27,35,.06),0 4px 12px rgba(21,27,35,.05);
+  --r:10px;
+  --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --cuerpo:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
-@media (prefers-color-scheme: dark){:root{
-  --bg:#0f151c; --surface:#17202a; --surface-2:#1d2833; --line:#2b3846; --fg:#e7edf3; --muted:#9aa8b6;
-  --accent:#f2a531; --steel:#8fb4d9; --ok:#5cc791; --ok-bg:#163326; --warn:#f0b35a; --warn-bg:#3a2a12; --crit:#ff8a80; --crit-bg:#3d1b19; color-scheme:dark}}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --papel:#0E1319; --sup:#161D26; --sup2:#1E2731; --tinta:#E3E9F1; --suave:#8B98A8;
+    --linea:#2A3542; --azul:#4E7CBF; --acento:#5B9BF5; --acento-sup:#17263D;
+    --c10:#E8675A; --c8:#D69A3C; --c6:#7FA3C9; --cbajo:#8B98A8; --ok:#5FB98C;
+    --sombra:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --papel:#0E1319; --sup:#161D26; --sup2:#1E2731; --tinta:#E3E9F1; --suave:#8B98A8;
+  --linea:#2A3542; --azul:#4E7CBF; --acento:#5B9BF5; --acento-sup:#17263D;
+  --c10:#E8675A; --c8:#D69A3C; --c6:#7FA3C9; --cbajo:#8B98A8; --ok:#5FB98C;
+  --sombra:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+}
+</style>
+<style>
 *{box-sizing:border-box}
-html,body{margin:0}
-body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45;padding-top:env(safe-area-inset-top,0px)}
-[hidden]{display:none!important}
-.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
-header .wrap{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:12px}
-h1{font-family:var(--f-display);font-size:22px;margin:0;line-height:1}
-h1 span{color:var(--accent)}
-.live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
-.live.on .dot{background:var(--ok)}
-.btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 14px var(--f-body);padding:10px 14px;border-radius:8px;cursor:pointer}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn.sm{padding:6px 10px;font-size:13px}
-.btn:disabled{opacity:.55}
-.btn:focus-visible,.opt:focus-visible,.chip:focus-visible,.ohead:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.login{max-width:380px;margin:12vh auto 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;display:grid;gap:14px}
-.login h2{font-family:var(--f-display);font-size:28px;margin:0}
-label.lb{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px}
-input[type=email],input[type=password],textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--fg);font:16px var(--f-body);padding:11px}
-.err{color:var(--crit);font-size:14px;min-height:1em}
-.note{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--warn-bg);color:var(--warn);font-size:14px}
-.bar2{display:flex;gap:8px;align-items:center;justify-content:space-between;padding-block:12px 4px;flex-wrap:wrap}
-.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
-.chip{flex:none;appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:500 13px var(--f-body);padding:6px 12px;border-radius:999px;cursor:pointer}
-.chip[aria-pressed="true"]{background:var(--steel);border-color:var(--steel);color:var(--surface)}
-.list{display:grid;gap:12px;margin:10px 0 40px}
-.orden{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.ohead{width:100%;appearance:none;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:14px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center}
-.plate{font-family:var(--f-mono);font-weight:700;font-size:15px;letter-spacing:.06em;background:#fff;color:#111;border:2px solid #222;border-radius:5px;padding:3px 8px;white-space:nowrap}
-.ot b{font-family:var(--f-display);font-size:19px;display:block;line-height:1.1}
-.ot small{color:var(--muted);font-size:13px}
-.prog{font-family:var(--f-mono);font-size:13px;color:var(--muted);text-align:right}
-.pill{display:inline-block;font:600 11px var(--f-body);text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:999px;white-space:nowrap}
-.e-PENDIENTE,.o-GENERADA{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
-.e-HECHO,.o-CERRADA{background:var(--ok-bg);color:var(--ok)}
-.e-NO_SE_PUDO,.o-EN_TALLER{background:var(--warn-bg);color:var(--warn)}
-.e-ANULADO{background:var(--surface-2);color:var(--muted);border:1px dashed var(--muted)}
-.item{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:12px 14px;border-top:1px solid var(--line)}
-.item.anul .desc{text-decoration:line-through;color:var(--muted)}
-.crit{width:34px;height:34px;border-radius:7px;display:grid;place-items:center;font-family:var(--f-mono);font-weight:700}
-.c-hi{background:var(--crit-bg);color:var(--crit)}.c-md{background:var(--warn-bg);color:var(--warn)}.c-lo{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
-.ib{min-width:0;display:grid;gap:6px}
-.desc{font-weight:500}
-.meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px;color:var(--muted)}
-.thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
-.empty{text-align:center;color:var(--muted);padding:40px 16px;background:var(--surface);border:1px dashed var(--line);border-radius:10px;margin-top:14px}
-.empty b{display:block;color:var(--fg);font-family:var(--f-display);font-size:20px;margin-bottom:4px}
-.sheet-bg{position:fixed;inset:0;background:rgba(10,16,24,.5);z-index:20}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:16px 16px 0 0;max-height:92%;overflow:auto}
-.sheet .wrap{padding-block:18px calc(18px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
-.sheet h3{font-family:var(--f-display);font-size:22px;margin:0}
-.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.opt{appearance:none;border:2px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:10px;padding:14px 6px;font:700 15px var(--f-body);cursor:pointer}
-.opt[aria-pressed="true"][data-v="HECHO"]{border-color:var(--ok);background:var(--ok-bg);color:var(--ok)}
-.opt[aria-pressed="true"][data-v="NO_SE_PUDO"]{border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
-.opt[aria-pressed="true"][data-v="ANULADO"]{border-color:var(--muted)}
-textarea{min-height:76px}
-.foto{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.foto img{width:92px;height:92px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
-.actions{display:flex;gap:10px;justify-content:flex-end}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;max-width:calc(100% - 32px)}
+html,body{height:100%}
+body{margin:0;background:var(--papel);color:var(--tinta);
+     font-family:var(--cuerpo);font-size:15px;line-height:1.45;
+     -webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+input{font:inherit}
+
+/* ---------- barra superior ---------- */
+.barra{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;
+  background:var(--azul);color:#fff;padding:10px 14px 0}
+.marca{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.marca h1{margin:0;font-family:var(--cond);font-weight:700;font-size:19px;
+  letter-spacing:.055em;text-transform:uppercase}
+.marca .solo{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  opacity:.72;border:1px solid rgba(255,255,255,.35);border-radius:3px;padding:1px 5px}
+.marca time{margin-left:auto;font-size:11.5px;opacity:.72;font-variant-numeric:tabular-nums}
+.buscar{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.14);
+  border-radius:8px;padding:8px 11px;margin:9px 0 10px}
+.buscar svg{flex:none;opacity:.7}
+.buscar input{flex:1;min-width:0;background:none;border:0;color:#fff;outline:none;font-size:15px}
+.buscar input::placeholder{color:rgba(255,255,255,.6)}
+.buscar button{background:none;border:0;padding:0 2px;color:#fff;opacity:.7;font-size:18px;line-height:1}
+
+/* ---------- chips ---------- */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:0 14px 11px;
+  background:var(--azul);scrollbar-width:none;position:sticky;z-index:19;
+  top:calc(env(safe-area-inset-top,0px) + 92px)}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;background:rgba(255,255,255,.12);color:#fff;border:1px solid transparent;
+  border-radius:999px;padding:5px 12px;font-size:13px;font-weight:500;white-space:nowrap}
+.chip .n{opacity:.62;margin-left:5px;font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:#fff;color:var(--azul);font-weight:600}
+.chip[aria-pressed="true"] .n{opacity:.55}
+.chip.critico[aria-pressed="true"]{background:var(--c10);color:#fff}
+
+/* ---------- barra de orden (dentro del lienzo, sobre papel claro) ---------- */
+.orden-barra{display:flex;align-items:center;gap:7px;overflow-x:auto;
+  margin:-6px 0 14px;padding-bottom:3px;scrollbar-width:none}
+.orden-barra::-webkit-scrollbar{display:none}
+.orden-rot{flex:none;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--suave);font-weight:600}
+.orden-barra .chip{background:var(--sup);color:var(--tinta);
+  border:1px solid var(--linea);box-shadow:var(--sombra);font-size:12.5px;padding:5px 11px}
+.orden-barra .chip[aria-pressed="true"]{background:var(--azul);color:#fff;
+  border-color:var(--azul);font-weight:600}
+.orden-barra .chip[data-criterio]{display:inline-flex;align-items:center;gap:4px}
+.orden-barra .chip.vuelta{display:inline-flex;align-items:center;justify-content:center;
+  margin-left:auto;color:var(--acento);padding:5px 9px}
+.orden-barra .chip.vuelta svg{flex:none}
+
+/* ---------- nota de frescura del status ---------- */
+.nota-ace{margin:-8px 0 12px;font-size:12px;color:var(--suave)}
+.nota-ace.vieja{color:var(--c8);font-weight:600}
+
+/* ---------- tarjeta que ademas filtra ---------- */
+.tile.tsel{text-align:left;font:inherit;color:inherit;cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.tile.tsel[aria-pressed="true"]{border-color:var(--azul);
+  box-shadow:0 0 0 2px var(--azul) inset,var(--sombra)}
+
+/* ---------- chips dentro del lienzo ----------
+   OJO: NO se puede reutilizar .chips aqui. Esa es la barra de arriba y lleva
+   position:sticky + fondo azul, asi que metida en el lienzo se queda flotando
+   encima de las tarjetas y las tapa. Paso el 22-09-2026 en la vista de aceite. */
+.chips-lienzo{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px}
+.chips-lienzo .chip{background:var(--sup);color:var(--tinta);border:1px solid var(--linea);
+  box-shadow:var(--sombra);font-size:12.5px;padding:5px 11px}
+.chips-lienzo .chip .n{opacity:.6}
+.chips-lienzo .chip[aria-pressed="true"]{background:var(--azul);color:#fff;
+  border-color:var(--azul);font-weight:600}
+.chips-lienzo .chip[aria-pressed="true"] .n{opacity:.7}
+
+/* ---------- lienzo ---------- */
+main{padding:14px 14px 92px;max-width:820px;margin:0 auto}
+.resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-bottom:16px}
+.tile{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  padding:10px 11px;box-shadow:var(--sombra)}
+.tile b{display:block;font-family:var(--cond);font-weight:700;font-size:26px;
+  line-height:1.05;font-variant-numeric:tabular-nums}
+.tile span{display:block;font-size:11px;color:var(--suave);letter-spacing:.03em;margin-top:2px}
+.tile.rojo b{color:var(--c10)}
+.tile.ambar b{color:var(--c8)}
+
+h2.seccion{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--suave);margin:20px 0 9px}
+
+/* ---------- unidad ---------- */
+.unidad{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  margin-bottom:10px;overflow:hidden;box-shadow:var(--sombra)}
+.ucab{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;
+  text-align:left;padding:11px 12px}
+.placa{font-family:var(--cond);font-weight:700;font-size:20px;letter-spacing:.06em}
+.tipo{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--suave);
+  border:1px solid var(--linea);border-radius:3px;padding:1px 5px}
+.ucab .cuenta{margin-left:auto;display:flex;align-items:center;gap:7px;
+  font-size:12.5px;color:var(--suave);font-variant-numeric:tabular-nums}
+.punto{width:8px;height:8px;border-radius:50%;flex:none}
+.flecha{transition:transform .18s;opacity:.5;flex:none}
+.unidad[data-abierta="1"] .flecha{transform:rotate(90deg)}
+.trabajos{display:none;border-top:1px solid var(--linea)}
+.unidad[data-abierta="1"] .trabajos{display:block}
+
+.trabajo{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--linea)}
+.trabajo:last-child{border-bottom:0}
+.franja{width:3px;border-radius:2px;flex:none;align-self:stretch}
+.tcuerpo{min-width:0;flex:1}
+.tmeta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px}
+.crit{font-family:var(--cond);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;
+  min-width:20px}
+.cat{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave);font-weight:600}
+.dias{font-size:11.5px;color:var(--suave);font-variant-numeric:tabular-nums;margin-left:auto}
+.dias.viejo{color:var(--c8);font-weight:600}
+.texto{font-size:14.5px;overflow-wrap:anywhere}
+.etq{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:1px 6px;
+  border-radius:4px;margin-top:5px;margin-right:5px}
+.etq.orden{background:var(--acento-sup);color:var(--acento);font-weight:600;
+  font-variant-numeric:tabular-nums}
+.etq.espera{background:var(--sup2);color:var(--suave)}
+.etq.veces{background:var(--sup2);color:var(--c8);font-weight:600}
+/* El codigo del checklist: es con lo que se busca el reporte en la hoja de
+   origen, asi que va monoespaciado y seleccionable, no como una etiqueta mas. */
+.cod{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;
+  color:var(--suave);letter-spacing:.02em;user-select:all;-webkit-user-select:all}
+/* Los dos kilometrajes, dentro de la tarjeta de Aceite. No van en la lista de
+   pendientes: no son del trabajo, son de la unidad, y su sitio es el recuadro
+   donde ya se habla de cada cuantos kilometros toca el cambio. */
+.okm{display:flex;flex-wrap:wrap;gap:3px 14px;margin-top:5px;
+  font-size:13px;color:var(--suave);font-variant-numeric:tabular-nums}
+.okm b{font-weight:700;color:var(--texto);font-family:var(--cond);font-size:15px}
+
+/* Plan: el reparto del dia. Quien atiende que placa y cuanto le cabe.
+   La barra pasa del 100% a proposito -- que a alguien no le quepa el dia es
+   justo lo que hay que ver desde el taller. */
+.gente{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+       gap:8px;margin-bottom:16px}
+.gpers{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+       padding:9px 11px 10px}
+.gpers .gnom{font-family:var(--cond);font-weight:700;font-size:15px;letter-spacing:.03em}
+.gpers .gcat{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+             color:var(--suave);font-weight:600}
+.gpers .ghor{font-size:11.5px;color:var(--suave);font-variant-numeric:tabular-nums;
+             float:right}
+.gbar{height:4px;border-radius:3px;background:var(--sup2);margin:7px 0 6px;overflow:hidden}
+.gbar i{display:block;height:100%;border-radius:3px;background:var(--ok)}
+.gbar.justo i{background:var(--c8)}
+.gbar.pasado i{background:var(--c10)}
+.gruta{font-size:12.5px;overflow-wrap:anywhere}
+.gruta em{font-style:normal;color:var(--suave)}
+.etq.tec{background:var(--acento-sup);color:var(--acento);font-weight:600}
+/* Repartido a alguien que ese dia no viene. Se marca en rojo porque es lo
+   que deja arrastrar el reparto de un dia a otro sin mirar quien libra. */
+.etq.tec.falta{background:rgba(176,0,32,.14);color:var(--c10)}
+.quienes{display:flex;flex-wrap:wrap;gap:4px;padding:7px 12px 0}
+.manana{opacity:.92}
+.mcard{display:flex;align-items:center;gap:9px;background:var(--sup);
+       border:1px solid var(--linea);border-radius:var(--r);padding:9px 12px;
+       margin-bottom:7px}
+.mcard .placa{font-size:16px;white-space:nowrap}
+.mcard .mq{margin-left:auto;font-size:12px;color:var(--suave);text-align:right;
+           flex:none;max-width:52%}
+/* La placa NO se parte nunca: es lo que se busca con el dedo en una lista.
+   Quien la lleva va detras, recortado con puntos suspensivos si no cabe. */
+.ucab .placa{white-space:nowrap}
+.qtec{max-width:11ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      color:var(--acento);font-weight:600}
+.ucab .cuenta{white-space:nowrap}
+/* Historial: lista plana en orden de fecha, con un titulillo por dia.
+   No se agrupa por unidad a proposito -- lo que se pregunta aqui es «que se
+   ha hecho ultimamente», no «que le falta a esta placa». */
+.hdia{display:flex;align-items:baseline;gap:8px;margin:16px 0 7px;padding:0 2px}
+.hdia b{font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:.03em}
+.hdia span{font-size:11px;color:var(--suave)}
+.hdia:first-of-type{margin-top:4px}
+.hlista{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+        overflow:hidden}
+.hlista .trabajo:last-child{border-bottom:0}
+.hplaca{font-family:var(--cond);font-weight:700;font-size:13px;letter-spacing:.02em}
+.htipo{font-size:10.5px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em}
+.etq.quien{background:var(--sup2);color:var(--suave)}
+.hmas{margin:14px 0 4px;padding:11px 13px;background:var(--sup);border:1px solid var(--linea);
+      border-radius:var(--r);font-size:13px;color:var(--suave);text-align:center}
+
+/* ---------- ordenes ---------- */
+.orden{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  padding:11px 12px;margin-bottom:9px;box-shadow:var(--sombra)}
+.ocab{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.ocab .corr{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing:.05em;
+  color:var(--suave);font-variant-numeric:tabular-nums}
+.estado{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;
+  padding:2px 7px;border-radius:999px}
+.estado.gen{background:var(--acento-sup);color:var(--acento)}
+.estado.tal{background:rgba(174,106,18,.14);color:var(--c8)}
+.ometa{font-size:12.5px;color:var(--suave);margin-top:4px}
+.progreso{height:5px;border-radius:3px;background:var(--sup2);margin-top:9px;overflow:hidden}
+.progreso i{display:block;height:100%;background:var(--ok);border-radius:3px}
+
+.vacio{text-align:center;color:var(--suave);padding:44px 18px;font-size:14.5px}
+.vacio b{display:block;font-family:var(--cond);font-size:19px;color:var(--ok);
+  letter-spacing:.04em;margin-bottom:5px}
+
+/* ---------- formato del checklist ----------
+   Una tarjeta por placa con SOLO lo que falla, un punto de color por cosa.
+   El nombre largo y el texto del formulario no van: no caben en un telefono
+   y el taller no los necesita para saber que traer. */
+.fcard{background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  padding:10px 12px 9px;margin-bottom:10px;box-shadow:var(--sombra)}
+.fcab{display:flex;align-items:center;gap:9px}
+.fcab .placa{white-space:nowrap}
+.fdias{margin-left:auto;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+.fdias.ok{color:var(--ok)} .fdias.medio{color:var(--c8)} .fdias.viejo{color:var(--c10)}
+.fcard .cod{margin-top:1px}
+.flista{list-style:none;margin:7px 0 0;padding:0}
+.flista li{display:flex;align-items:baseline;gap:7px;padding:3px 0;font-size:14px}
+.flista .punto{position:relative;top:-1px}
+.flista .fnom{font-weight:600}
+.flista .fdet{color:var(--suave);overflow-wrap:anywhere}
+.flista .fvez{margin-left:auto;font-size:11px;color:var(--suave);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.ftema{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  font-weight:600;margin:6px 0 1px}
+
+/* ---------- pantalla grande ----------
+   La misma pagina y el mismo enlace: en el telefono se ve como siempre; en una
+   tablet o una PC las tarjetas se reparten en columnas y, desde 1024 px, el menu
+   pasa de abajo a un costado. Solo CSS: los datos y la logica no cambian.
+   Los hijos del lienzo que NO son tarjetas (resumen, chips, titulos, notas)
+   ocupan todo el ancho; las tarjetas se acomodan en la grilla. */
+@media (min-width:760px){
+  main{max-width:none;padding:18px 22px 96px}
+  #lienzo{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));
+          gap:12px;align-items:start}
+  #lienzo > *{grid-column:1/-1}
+  #lienzo > .unidad, #lienzo > .orden, #lienzo > .fcard, #lienzo > .mcard{
+          grid-column:auto;margin-bottom:0}
+  .resumen{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:6px}
+  .tile b{font-size:30px}
+  .barra{padding:12px 22px 0}
+  .chips{padding:0 22px 11px}
+}
+@media (min-width:1024px){
+  body{padding-left:216px;font-size:15.5px}
+  /* «body nav» y no «nav»: este bloque va ANTES de las reglas del menu de
+     abajo, y con la misma fuerza ellas ganaban y estiraban cada boton a todo
+     el alto de la pantalla. */
+  body nav{top:0;bottom:0;right:auto;width:216px;flex-direction:column;
+      justify-content:flex-start;gap:2px;border-top:0;border-right:1px solid var(--linea);
+      padding:18px 10px}
+  body nav button{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;
+      padding:11px 14px;font-size:14.5px;border-radius:8px}
+  body nav button[aria-current="page"]{background:var(--acento-sup);font-weight:600}
+  main{padding:20px 28px 40px}
+  .barra{padding:14px 28px 0}
+  .chips{padding:0 28px 12px}
+  .marca h1{font-size:22px}
+  .buscar{max-width:620px}
+  #lienzo{grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}
+}
+
+/* ---------- nav inferior ---------- */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;
+  background:var(--sup);border-top:1px solid var(--linea);
+  padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;border:0;padding:9px 4px 10px;color:var(--suave);
+  display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500}
+nav button[aria-current="page"]{color:var(--acento)}
+nav svg{width:21px;height:21px}
+:focus-visible{outline:2px solid var(--acento);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>
+/* ---------- puerta del PIN ---------- */
+#puerta[hidden]{display:none!important}
+#puerta{position:fixed;inset:0;z-index:60;background:var(--azul);color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;padding:28px 22px;text-align:center}
+#puerta img{width:76px;height:76px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#puerta h2{margin:0;font-family:var(--cond);font-weight:700;font-size:23px;
+  letter-spacing:.055em;text-transform:uppercase}
+#puerta p{margin:0;max-width:22em;font-size:13.5px;line-height:1.55;opacity:.8}
+#puerta form{display:flex;flex-direction:column;gap:10px;width:100%;max-width:280px}
+#pin{width:100%;padding:13px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.12);color:#fff;font-size:17px;text-align:center;
+  letter-spacing:.18em;outline:none}
+#pin::placeholder{letter-spacing:normal;color:rgba(255,255,255,.55)}
+#pin:focus{border-color:#fff;background:rgba(255,255,255,.18)}
+#entrar{padding:13px 14px;border-radius:10px;border:0;background:#fff;color:var(--azul);
+  font-weight:700;font-size:15px;letter-spacing:.03em}
+#entrar[disabled]{opacity:.55}
+#aviso{min-height:1.2em;font-size:13px;color:#FFD4CE;font-weight:600}
+#puerta .pie{font-size:11.5px;opacity:.6;max-width:24em}
+
+/* ---------- cinta de estado ---------- */
+#cinta{position:sticky;z-index:18;top:calc(env(safe-area-inset-top,0px) + 92px);
+  background:var(--c8);color:#fff;font-size:12px;padding:6px 14px;text-align:center}
+#cinta[hidden]{display:none!important}
 </style>
 </head>
 <body>
-
-<section id="vLogin" hidden>
-  <div class="wrap">
-    <form class="login" id="fLogin">
-      <h2>Advanced Timco · Taller</h2>
-      <div><label class="lb" for="lCorreo">Correo</label><input type="email" id="lCorreo" autocomplete="username" required></div>
-      <div><label class="lb" for="lClave">Contraseña</label><input type="password" id="lClave" autocomplete="current-password" required></div>
-      <div class="err" id="lErr" role="alert"></div>
-      <button class="btn primary" id="lBtn" type="submit">Entrar</button>
-    </form>
-  </div>
-</section>
-
-<section id="vApp" hidden>
-  <header><div class="wrap">
-    <h1>TIMCO <span>Taller</span></h1>
-    <span class="live" id="live"><i class="dot"></i><span id="liveTxt">Conectando</span></span>
-    <button class="btn sm" id="salir">Salir</button>
-  </div></header>
-  <main class="wrap">
-    <div class="note" id="offline" hidden>Sin señal. Puedes ver las órdenes, pero los cierres se guardan cuando vuelva la conexión.</div>
-    <div class="note" id="noTec" hidden>Tu usuario no está registrado como técnico activo. Pide a Frank que te dé de alta.</div>
-    <div class="bar2">
-      <div class="chips" id="chips"></div>
-      <button class="chip" id="verCerr" aria-pressed="false">Ver cerradas</button>
-    </div>
-    <div class="list" id="lista"><div class="empty"><b>Cargando órdenes</b></div></div>
-  </main>
-</section>
-
-<div id="sheet" hidden>
-  <div class="sheet-bg" id="shBg"></div>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="shT">
-    <div class="wrap">
-      <div><div class="meta" id="shMeta"></div><h3 id="shT">Cerrar trabajo</h3><div class="desc" id="shDesc"></div></div>
-      <div><label class="lb">Resultado</label>
-        <div class="opts">
-          <button class="opt" data-v="HECHO" aria-pressed="false">Hecho</button>
-          <button class="opt" data-v="NO_SE_PUDO" aria-pressed="false">No se pudo</button>
-          <button class="opt" data-v="ANULADO" aria-pressed="false">Anular</button>
-        </div>
-      </div>
-      <div id="motBox" hidden><label class="lb" for="shMot">Motivo de la anulación</label>
-        <select id="shMot"><option value="">Elige un motivo</option><option>Repetido</option><option>Ya estaba hecho</option><option>No corresponde a la unidad</option><option>Otro</option></select></div>
-      <div><label class="lb" for="shCom">Comentario <span id="comReq"></span></label>
-        <textarea id="shCom" placeholder="Qué se hizo, repuesto usado o por qué no se pudo"></textarea></div>
-      <div><label class="lb" for="shFoto">Foto <span id="fotoReq"></span></label>
-        <div class="foto"><input type="file" id="shFoto" accept="image/*" capture="environment"><img id="shPrev" alt="Vista previa" hidden></div></div>
-      <div class="err" id="shErr" role="alert"></div>
-      <div class="actions"><button class="btn" id="shNo">Cancelar</button><button class="btn primary" id="shOk">Guardar cierre</button></div>
-    </div>
-  </div>
+<div id="puerta">
+  <img src="icono-192.png" alt="" width="76" height="76">
+  <h2>Taller TIMCO</h2>
+  <p>Consulta de pendientes y órdenes. Teclea el PIN una sola vez: este teléfono lo recuerda.</p>
+  <form id="formpin" autocomplete="off">
+    <!-- Sin inputmode="numeric": el PIN puede llevar letras y ese
+         teclado no las tiene. Ya paso. -->
+    <input id="pin" type="password" placeholder="PIN"
+           autocomplete="current-password" aria-label="PIN de acceso">
+    <button type="submit" id="entrar">Entrar</button>
+  </form>
+  <div id="aviso" role="status" aria-live="polite"></div>
+  <div class="pie">Solo lectura. Desde aquí no se crean ni se cierran órdenes.</div>
 </div>
-<div class="toast" id="toast" hidden></div>
+<header class="barra">
+  <div class="marca">
+    <h1>Taller TIMCO</h1>
+    <span class="solo">Solo consulta</span>
+    <time id="sello"></time>
+  </div>
+  <label class="buscar">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" inputmode="search" autocomplete="off"
+           placeholder="Placa, palabra o código: AWM-902, freno, 2610010723…" aria-label="Buscar">
+    <button type="button" id="limpiar" hidden aria-label="Limpiar búsqueda">×</button>
+  </label>
+</header>
+<div class="chips" id="chips"></div>
+<div id="cinta" hidden></div>
 
+<main>
+  <div id="lienzo"></div>
+</main>
+
+<nav>
+  <button type="button" data-vista="pend" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M4 6h16M4 12h16M4 18h10"/></svg>Pendientes</button>
+  <button type="button" data-vista="ord">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>Órdenes</button>
+  <button type="button" data-vista="plan" id="btnplan" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M9 11l2 2 4-4"/><rect x="3" y="4" width="18" height="17" rx="2"/>
+      <path d="M8 2v4M16 2v4"/></svg>Plan</button>
+  <button type="button" data-vista="ace" id="btnace" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M3 13h4l2-5 3 10 2-6 2 3h5"/></svg>Aceite</button>
+  <button type="button" data-vista="hist" id="btnhist" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg>Historial</button>
+  <button type="button" data-vista="fmt" id="btnfmt" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/>
+      <path d="m9 13 2 2 4-4"/></svg>Otras alertas</button>
+  <button type="button" data-vista="res">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen</button>
+</nav>
 <script>
-const CONFIG = { url: "https://byjgrhjklojtnnwcspgx.supabase.co", anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5amdyaGprbG9qdG5ud2NzcGd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MTM4OTksImV4cCI6MjEwNzk4OTg5OX0.-W_oPuKIzhIRHS8HhZkpy5mrD0JTYOyMX4eBOmGN2qE" };
-const sb = supabase.createClient(CONFIG.url, CONFIG.anon);
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const EST = {PENDIENTE:'Pendiente',HECHO:'Hecho',NO_SE_PUDO:'No se pudo',ANULADO:'Anulado'};
-const OEST = {GENERADA:'Generada',EN_TALLER:'En taller',CERRADA:'Cerrada',ANULADA:'Anulada'};
-const ERRORES = {
-  YA_CERRADO:'Otra persona ya cerró este trabajo.', FALTA_FOTO:'Toma una foto del trabajo terminado.',
-  FALTA_COMENTARIO:'Escribe un comentario.', FALTA_MOTIVO:'Elige el motivo de la anulación.',
-  NO_AUTORIZADO:'Tu usuario no está habilitado para cerrar trabajos.', NO_EXISTE:'Ese trabajo ya no existe.',
-  FOTO_INVALIDA:'La foto no corresponde a este trabajo. Vuelve a tomarla.'
+window.arrancar = function(D){
+"use strict";
+const lienzo = document.getElementById("lienzo");
+const chips  = document.getElementById("chips");
+const caja   = document.getElementById("q");
+const limpiar= document.getElementById("limpiar");
+
+// El taller trabaja por especialidad: cada categoria tiene su gente.
+const TECNICOS = D.tecnicos || {};
+const ORDEN_CAT = ["MECANICO","ELECTRICO","INFRAESTRUCTURA","NEUMATICO","REFRIGERADO",
+                   "ACCESORIO","IMPLEMENTO","PINTURA","PERMISOLOGIA","DOCUMENTOS"];
+// Como se ESCRIBE cada categoria. El valor que viaja en el paquete no lleva
+// tilde y no se toca -- es el mismo que esta guardado en la base y el que se
+// compara aqui arriba --; la tilde se pone solo al pintarlo. Lo que no este
+// en la lista sale tal cual, con la primera en mayuscula.
+const ROTULO_CAT = {
+  MECANICO:"Mecánico", ELECTRICO:"Eléctrico", NEUMATICO:"Neumático",
+  PERMISOLOGIA:"Permisología", INFRAESTRUCTURA:"Infraestructura",
+  REFRIGERADO:"Refrigerado", ACCESORIO:"Accesorio", IMPLEMENTO:"Implemento",
+  PINTURA:"Pintura", DOCUMENTOS:"Documentos"
 };
-const S = { ord:[], trab:[], tec:{}, esp:'TODAS', verCerradas:false, open:new Set(), sheet:null, urls:{} };
-const critCls = c => c>=8?'c-hi':c>=5?'c-md':'c-lo';
-const fmt = iso => iso ? new Date(iso).toLocaleString('es-PE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-let tT; function toast(m){ const t=$('toast'); t.textContent=m; t.hidden=false; clearTimeout(tT); tT=setTimeout(()=>t.hidden=true,3500); }
-function live(on,txt){ $('live').classList.toggle('on',on); $('liveTxt').textContent=txt; }
-function codigoDe(err){ const t=(err&&(err.message||err.details||''))+''; return Object.keys(ERRORES).find(k=>t.includes(k)); }
-
-// ---------- sesión ----------
-async function arrancar(){
-  const { data:{ session } } = await sb.auth.getSession();
-  if(!session){ $('vLogin').hidden=false; $('vApp').hidden=true; return; }
-  $('vLogin').hidden=true; $('vApp').hidden=false;
-  const { data:esTec } = await sb.rpc('es_tecnico');
-  $('noTec').hidden = !!esTec;
-  await cargar(); suscribir();
-}
-$('fLogin').onsubmit = async e => {
-  e.preventDefault(); $('lErr').textContent=''; $('lBtn').disabled=true;
-  const { error } = await sb.auth.signInWithPassword({ email:$('lCorreo').value.trim(), password:$('lClave').value });
-  $('lBtn').disabled=false;
-  if(error){ $('lErr').textContent = error.message.includes('Invalid') ? 'Correo o contraseña incorrectos.' : 'No se pudo entrar. Revisa la señal.'; return; }
-  arrancar();
+const rotCat = c => !c ? "" : (ROTULO_CAT[c] ||
+                               (c.charAt(0) + c.slice(1).toLowerCase()));
+// Lo mismo para el semaforo del aceite.
+const ROTULO_SEM = {
+  VENCIDO:"Vencido", CRITICO:"Crítico", PROXIMO:"Próximo", OK:"Al día",
+  "SIN DATO":"Sin dato", INOPERATIVA:"Inoperativa"
 };
-$('salir').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+const rotSem = s => !s ? "" : (ROTULO_SEM[s] ||
+                               (s.charAt(0) + s.slice(1).toLowerCase()));
 
-// ---------- datos ----------
-async function cargar(){
-  const [o,t,tc] = await Promise.all([
-    sb.from('ordenes').select('*').order('id'),
-    sb.from('trabajos').select('*').order('criticidad',{ascending:false}),
-    sb.from('tecnicos').select('id,nombre')]);
-  if(o.error||t.error){ live(false,'Sin conexión'); return; }
-  S.ord=o.data; S.trab=t.data; S.tec=Object.fromEntries((tc.data||[]).map(x=>[x.id,x.nombre]));
-  live(true,'En vivo'); await firmarFotos(); render();
+let vista = "pend", cat = "", soloCriticos = false, texto = "", abiertas = new Set();
+// "" todas · "mant" mecanico/electrico/infraestructura · "otras" el resto.
+// Es un filtro aparte del de categoria: se pueden combinar.
+let grupo = "";
+// Por defecto lo mas antiguo primero: lo que lleva meses pedido es lo que
+// hay que mirar, y la gravedad ya se ve en el color de cada trabajo.
+let criterio = "ant";      // "ant" antiguedad · "grav" criticidad
+let viejosArriba = true;   // true = de mas antiguos a mas recientes
+// El historial va al reves que los pendientes y por eso lleva su propia
+// preferencia: en lo que falta manda lo mas viejo, en lo ya hecho manda lo
+// ultimo. Compartir una sola variable obligaba a darle la vuelta cada vez
+// que se cambia de pestana.
+let recientesArriba = true;
+const HIST = Array.isArray(D.hist) ? D.hist : [];
+try {
+  const g = JSON.parse(localStorage.getItem("taller-timco") || "{}");
+  if (g.cat) cat = g.cat;
+  if (g.soloCriticos) soloCriticos = true;
+  if (["ant", "grav", "cant"].includes(g.criterio)) criterio = g.criterio;
+  if (g.grupo === "mant" || g.grupo === "otras") grupo = g.grupo;
+  if (typeof g.viejosArriba === "boolean") viejosArriba = g.viejosArriba;
+  if (typeof g.recientesArriba === "boolean") recientesArriba = g.recientesArriba;
+} catch(e){}
+function recordar(){
+  try { localStorage.setItem("taller-timco",
+        JSON.stringify({cat:cat, soloCriticos:soloCriticos, grupo:grupo,
+                        criterio:criterio, viejosArriba:viejosArriba,
+                        recientesArriba:recientesArriba})); } catch(e){}
 }
-async function firmarFotos(){
-  const faltan=[...new Set(S.trab.map(t=>t.foto_path).filter(p=>p&&!S.urls[p]))];
-  if(!faltan.length) return;
-  const { data } = await sb.storage.from('evidencias').createSignedUrls(faltan, 3600);
-  (data||[]).forEach(d=>{ if(d.signedUrl) S.urls[d.path]=d.signedUrl; });
-}
-let recarga;
-function suscribir(){
-  sb.channel('cambios')
-    .on('postgres_changes',{event:'*',schema:'public',table:'trabajos'},()=>{ clearTimeout(recarga); recarga=setTimeout(cargar,400); })
-    .on('postgres_changes',{event:'*',schema:'public',table:'ordenes'},()=>{ clearTimeout(recarga); recarga=setTimeout(cargar,400); })
-    .subscribe(st=>{ if(st==='SUBSCRIBED') live(true,'En vivo'); });
-  setInterval(cargar, 30000);
-}
-addEventListener('online',()=>{$('offline').hidden=true;cargar();});
-addEventListener('offline',()=>{$('offline').hidden=false;live(false,'Sin señal');});
 
-// ---------- vista ----------
-const trDe = oid => S.trab.filter(t=>t.orden_id===oid);
-function render(){
-  const esps=['TODAS',...new Set(S.ord.map(o=>o.especialidad).filter(Boolean))];
-  $('chips').innerHTML=esps.map(e=>`<button class="chip" data-esp="${esc(e)}" aria-pressed="${S.esp===e}">${e==='TODAS'?'Todas':esc(e)}</button>`).join('');
-  $('verCerr').setAttribute('aria-pressed',S.verCerradas);
-  const vis=S.ord.filter(o=>(S.esp==='TODAS'||o.especialidad===S.esp)&&(S.verCerradas||o.estado!=='CERRADA')&&o.estado!=='ANULADA');
-  if(!vis.length){ $('lista').innerHTML=`<div class="empty"><b>No hay órdenes abiertas</b>Las órdenes nuevas aparecen aquí al instante.</div>`; return; }
-  $('lista').innerHTML=vis.map(o=>{ const ts=trDe(o.id), r=ts.filter(t=>t.estado!=='PENDIENTE').length, op=S.open.has(o.id);
-    return `<article class="orden"><button class="ohead" data-o="${esc(o.id)}" aria-expanded="${op}">
-      <span class="plate">${esc(o.placa)}</span>
-      <span class="ot"><b>${esc(o.id)}</b><small>${esc(o.especialidad)} · ${esc(o.unidad||'')} · <span class="pill o-${esc(o.estado)}">${OEST[o.estado]||''}</span></small></span>
-      <span class="prog">${r}/${ts.length}</span></button>
-      ${op?ts.map(item).join(''):''}</article>`; }).join('');
+const sinTildes = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
+const nivel = k => k==null ? "bajo" : k>=10 ? "c10" : k>=8 ? "c8" : k>=6 ? "c6" : "bajo";
+const colorNivel = n => n==="c10" ? "var(--c10)" : n==="c8" ? "var(--c8)"
+                      : n==="c6" ? "var(--c6)" : "var(--cbajo)";
+const esc = s => (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const dia = s => s ? s.slice(8,10)+"/"+s.slice(5,7)+"/"+s.slice(2,4) : "";
+
+document.getElementById("sello").textContent =
+  "al " + dia(D.generado.slice(0,10)) + " " + D.generado.slice(11,16);
+
+// Lo que el taller llama TRABAJO DE MANTENIMIENTO: lo que para la unidad.
+// Tiene que decir lo mismo que db.CATEGORIAS_MANTENIMIENTO del aplicativo.
+const MANT = new Set(["MECANICO", "ELECTRICO", "INFRAESTRUCTURA"]);
+
+function filtrados(){
+  const t = sinTildes(texto).trim();
+  return D.pend.filter(p => {
+    if (cat && p.c !== cat) return false;
+    if (grupo === "mant"  && !MANT.has(p.c)) return false;
+    if (grupo === "otras" &&  MANT.has(p.c)) return false;
+    if (soloCriticos && !(p.k >= 8)) return false;
+    // Se busca tambien por el codigo del checklist: es lo que trae el
+    // conductor cuando pregunta por «el 2610010928».
+    if (t && !(sinTildes(p.u).includes(t) || sinTildes(p.x).includes(t)
+               || sinTildes(p.c).includes(t) || sinTildes(p.o).includes(t)
+               || sinTildes(p.g || "").includes(t))) return false;
+    return true;
+  });
 }
-function item(t){
-  let acc = t.estado==='PENDIENTE' ? `<div><button class="btn primary sm" data-c="${esc(t.id)}">Cerrar trabajo</button></div>` : '';
-  const quien = t.cerrado_por ? `<span>${esc(S.tec[t.cerrado_por]||'Técnico')}</span><span>${fmt(t.cerrado_en)}</span>` : '';
-  return `<div class="item${t.estado==='ANULADO'?' anul':''}"><span class="crit ${critCls(t.criticidad)}">${t.criticidad}</span><div class="ib">
-    <span class="desc">${esc(t.descripcion)}</span>
-    <span class="meta"><span class="pill e-${t.estado}">${EST[t.estado]}${t.motivo?' · '+esc(t.motivo):''}</span>${quien}</span>
-    ${t.comentario?`<span class="meta">“${esc(t.comentario)}”</span>`:''}
-    ${t.foto_path&&S.urls[t.foto_path]?`<img class="thumb" src="${esc(S.urls[t.foto_path])}" alt="Foto del cierre">`:''}
-    ${acc}</div></div>`;
+
+function pintarChips(){
+  // Los chips cuentan sobre lo que se esta mirando: en Historial, «Mecanico 84»
+  // tiene que ser 84 trabajos hechos, no 84 pendientes.
+  const base = vista === "hist" ? HIST : D.pend;
+  const cuenta = {};
+  for (const p of base) cuenta[p.c] = (cuenta[p.c]||0) + 1;
+  const criticos = base.filter(p => p.k >= 8).length;
+  // La cartera partida en dos, y ademas se puede pulsar: es el indicador y
+  // el filtro a la vez. «Todas» limpia los dos filtros de golpe.
+  const nMant = base.filter(p => MANT.has(p.c)).length;
+  let h = `<button type="button" class="chip" data-cat="" data-grupo="" `
+        + `aria-pressed="${cat==="" && grupo===""}">`
+        + `Todas<span class="n">${base.length}</span></button>`
+        + `<button type="button" class="chip" data-grupo="mant" `
+        + `aria-pressed="${grupo==="mant"}">Mantenimiento<span class="n">${nMant}</span></button>`
+        + `<button type="button" class="chip" data-grupo="otras" `
+        + `aria-pressed="${grupo==="otras"}">Otras<span class="n">${base.length - nMant}</span></button>`
+        + `<button type="button" class="chip critico" data-critico="1" `
+        + `aria-pressed="${soloCriticos}">Críticos<span class="n">${criticos}</span></button>`;
+  for (const c of ORDEN_CAT){
+    if (!cuenta[c]) continue;
+    const quien = TECNICOS[c] ? " · " + TECNICOS[c].split(" · ")[0] : "";
+    h += `<button type="button" class="chip" data-cat="${c}" aria-pressed="${cat===c}">`
+       + `${esc(rotCat(c))}${esc(quien)}<span class="n">${cuenta[c]}</span></button>`;
+  }
+  chips.innerHTML = h;
 }
-document.addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b) return;
-  if(b.dataset.o){ S.open.has(b.dataset.o)?S.open.delete(b.dataset.o):S.open.add(b.dataset.o); render(); }
-  else if(b.dataset.esp){ S.esp=b.dataset.esp; render(); }
-  else if(b.id==='verCerr'){ S.verCerradas=!S.verCerradas; render(); }
-  else if(b.dataset.c) abrir(b.dataset.c);
-  else if(b.dataset.v&&S.sheet){ S.sheet.res=b.dataset.v; document.querySelectorAll('.opt').forEach(x=>x.setAttribute('aria-pressed',x===b)); req(); }
+
+function pintarPendientes(){
+  const filas = filtrados();
+  if (!filas.length){
+    lienzo.innerHTML = `<p class="vacio"><b>Nada por aquí</b>`
+      + (texto ? `Ninguna unidad ni observación coincide con «${esc(texto)}».`
+               : `No hay pendientes con este filtro.`) + `</p>`;
+    return;
+  }
+  const porUnidad = new Map();
+  for (const p of filas){
+    if (!porUnidad.has(p.u)) porUnidad.set(p.u, []);
+    porUnidad.get(p.u).push(p);
+  }
+  // Una unidad se ordena por su trabajo mas antiguo (o mas grave, segun el
+  // criterio), no por el promedio: lo que decide si hay que traerla es su
+  // peor caso, no la media de sus pendientes.
+  const signo = viejosArriba ? 1 : -1;
+  const pesoAnt  = p => (p.n || 0);
+  const pesoGrav = p => (p.k || 0);
+  // «Cantidad» no pesa el trabajo sino la UNIDAD: lo que se pregunta es que
+  // placa debe mas, no cual tiene el trabajo mas viejo. Dentro de cada placa
+  // se sigue ordenando por antiguedad, que es lo util para trabajarla.
+  const peso = criterio === "grav" ? pesoGrav : pesoAnt;
+  const cmpTrabajos = (a,b) => signo * (peso(b) - peso(a))
+        || (b.k||0) - (a.k||0) || (b.n||0) - (a.n||0);
+  const pesoUnidad = e => criterio === "cant"
+        ? e[1].length
+        : Math.max(...e[1].map(peso));
+  const unidades = [...porUnidad.entries()].sort((a,b) => {
+    const pa = pesoUnidad(a), pb = pesoUnidad(b);
+    return signo * (pb - pa) || b[1].length - a[1].length || a[0].localeCompare(b[0]);
+  });
+  const criticos = filas.filter(p => p.k >= 8).length;
+  const viejos = filas.filter(p => p.n > 30).length;
+
+  // La flecha va DENTRO del criterio activo: asi se ve de un vistazo en que
+  // sentido esta ordenado, sin leer nada. El boton de la derecha le da la
+  // vuelta, y pulsar el criterio que ya esta puesto hace lo mismo.
+  const flecha = viejosArriba
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.8" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>`
+      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.8" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`;
+  const rotulo = criterio === "ant"
+      ? (viejosArriba ? "Más antiguos primero" : "Más recientes primero")
+      : criterio === "cant"
+      ? (viejosArriba ? "Más pendientes primero" : "Menos pendientes primero")
+      : (viejosArriba ? "Más graves primero"   : "Menos graves primero");
+  const marca = c => criterio === c ? flecha : "";
+
+  // La cartera partida en dos. Un solo «582 pendientes» no dice si son frenos
+  // o colchonetas: MANT es lo que para la unidad. El grupo lo fija
+  // db.CATEGORIAS_MANTENIMIENTO en el aplicativo; aqui va la misma lista.
+  const mant = filas.filter(p => MANT.has(p.c)).length;
+  let h = `<div class="resumen">
+      <div class="tile"><b>${mant}</b><span>mantenimiento</span></div>
+      <div class="tile"><b>${filas.length - mant}</b><span>otras categorías</span></div>
+      <div class="tile"><b>${unidades.length}</b><span>unidades</span></div>
+      <div class="tile rojo"><b>${criticos}</b><span>criticidad 8+</span></div>
+      <div class="tile ambar"><b>${viejos}</b><span>+30 días</span></div>
+    </div>
+    <div class="orden-barra">
+      <span class="orden-rot">Ordenar</span>
+      <button type="button" class="chip" data-criterio="ant" title="${rotulo}"
+              aria-pressed="${criterio==="ant"}">${marca("ant")}Antigüedad</button>
+      <button type="button" class="chip" data-criterio="grav" title="${rotulo}"
+              aria-pressed="${criterio==="grav"}">${marca("grav")}Gravedad</button>
+      <button type="button" class="chip" data-criterio="cant" title="${rotulo}"
+              aria-pressed="${criterio==="cant"}">${marca("cant")}Cantidad</button>
+      <button type="button" class="chip vuelta" id="invertir"
+              title="${rotulo} · pulsa para invertir"
+              aria-label="Invertir el orden: ahora, ${rotulo}">${flecha}</button>
+    </div>`;
+
+  for (const [placa, ps] of unidades){
+    ps.sort(cmpTrabajos);
+    const peor = nivel(Math.max(...ps.map(p => p.k||0)));
+    const abierta = abiertas.has(placa) || unidades.length <= 3;
+    h += `<section class="unidad" data-abierta="${abierta?1:0}">
+      <button type="button" class="ucab" data-placa="${esc(placa)}"
+              aria-expanded="${abierta}">
+        <span class="punto" style="background:${colorNivel(peor)}"></span>
+        <span class="placa">${esc(placa)}</span>
+        <span class="tipo">${ps[0].t === "C" ? "Carreta" : "Tracto"}</span>
+        <span class="cuenta">${ps.length} pend.
+          <svg class="flecha" width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </span>
+      </button>
+      <div class="trabajos">`;
+    for (const p of ps){
+      const n = nivel(p.k), col = colorNivel(n);
+      h += `<article class="trabajo">
+        <span class="franja" style="background:${col}"></span>
+        <div class="tcuerpo">
+          <div class="tmeta">
+            <span class="crit" style="color:${col}">${p.k==null?"–":p.k}</span>
+            <span class="cat">${esc(rotCat(p.c) || "sin categoría")}</span>
+            <span class="dias${p.n>30?" viejo":""}">${p.n} d · desde ${dia(p.d)}</span>
+          </div>
+          <div class="texto">${esc(p.x)}</div>`;
+      if (p.g) h += `<div class="cod">${esc(p.g)}</div>`;
+      if (p.o) h += `<span class="etq orden">En ${esc(p.o)}</span>`;
+      if (p.v > 1) h += `<span class="etq veces">Pedido ${p.v} veces</span>`;
+      if (p.r) h += `<span class="etq espera">Espera: ${esc(p.r)}</span>`;
+      h += `</div></article>`;
+    }
+    h += `</div></section>`;
+  }
+  lienzo.innerHTML = h;
+}
+
+function pintarOrdenes(){
+  const t = sinTildes(texto).trim();
+  const os = D.ordenes.filter(o =>
+    (!cat || o.c === cat) &&
+    (!t || sinTildes(o.p).includes(t) || sinTildes(o.k).includes(t) || sinTildes(o.c).includes(t)));
+  if (!os.length){ lienzo.innerHTML = `<p class="vacio"><b>Sin órdenes</b>No hay órdenes abiertas con este filtro.</p>`; return; }
+  const enTaller = os.filter(o => o.e === "EN_TALLER").length;
+  let h = `<div class="resumen">
+      <div class="tile"><b>${os.length}</b><span>abiertas</span></div>
+      <div class="tile"><b>${enTaller}</b><span>en taller</span></div>
+      <div class="tile"><b>${os.reduce((a,o)=>a+o.t-o.h,0)}</b><span>trabajos por hacer</span></div>
+    </div><h2 class="seccion">Órdenes abiertas</h2>`;
+  for (const o of os){
+    const pct = o.t ? Math.round(o.h/o.t*100) : 0;
+    h += `<article class="orden">
+      <div class="ocab">
+        <span class="placa">${esc(o.p)}</span>
+        <span class="estado ${o.e==="EN_TALLER"?"tal":"gen"}">${o.e==="EN_TALLER"?"En taller":"Generada"}</span>
+        <span class="corr">${esc(o.k)}</span>
+      </div>
+      <div class="ometa">${esc(o.c)} · ${esc(o.op||"sin asignar")} · emitida ${dia(o.fe)}</div>
+      <div class="ometa"><b>${o.h}</b> de <b>${o.t}</b> trabajos hechos</div>
+      <div class="progreso"><i style="width:${pct}%"></i></div>
+    </article>`;
+  }
+  lienzo.innerHTML = h;
+}
+
+function pintarResumen(){
+  const porCat = {}, porUni = {};
+  for (const p of D.pend){
+    porCat[p.c] = porCat[p.c] || {n:0, c:0};
+    porCat[p.c].n++; if (p.k>=8) porCat[p.c].c++;
+    porUni[p.u] = porUni[p.u] || {n:0, k:0};
+    porUni[p.u].n++; porUni[p.u].k = Math.max(porUni[p.u].k, p.k||0);
+  }
+  const criticos = D.pend.filter(p=>p.k>=8).length;
+  const maxCat = Math.max(...Object.values(porCat).map(v=>v.n));
+  const mant = D.pend.filter(p => MANT.has(p.c)).length;
+  let h = `<div class="resumen">
+      <div class="tile"><b>${mant}</b><span>mantenimiento</span></div>
+      <div class="tile"><b>${D.pend.length - mant}</b><span>otras categorías</span></div>
+      <div class="tile"><b>${Object.keys(porUni).length}</b><span>de ${D.total_unidades} unidades</span></div>
+      <div class="tile rojo"><b>${criticos}</b><span>criticidad 8+</span></div>
+      <div class="tile"><b>${D.ordenes.length}</b><span>órdenes abiertas</span></div>
+    </div><h2 class="seccion">Por especialidad</h2>`;
+  for (const c of ORDEN_CAT){
+    const v = porCat[c]; if (!v) continue;
+    h += `<article class="orden" style="padding:10px 12px">
+      <div class="ocab"><span style="font-weight:600">${esc(rotCat(c))}</span>
+        <span class="corr" style="margin-left:auto">${v.n}${v.c?` · ${v.c} graves`:""}</span></div>
+      ${TECNICOS[c] ? `<div class="ometa">${esc(TECNICOS[c])}</div>` : ""}
+      <div class="progreso"><i style="width:${Math.round(v.n/maxCat*100)}%;
+           background:${v.c ? "var(--c8)" : "var(--c6)"}"></i></div>
+    </article>`;
+  }
+  const top = Object.entries(porUni).sort((a,b)=>b[1].n-a[1].n).slice(0,12);
+  h += `<h2 class="seccion">Las que más deben</h2>`;
+  for (const [u,v] of top){
+    h += `<article class="orden" style="padding:9px 12px">
+      <div class="ocab"><span class="punto" style="background:${colorNivel(nivel(v.k))}"></span>
+        <span class="placa">${esc(u)}</span>
+        <span class="corr" style="margin-left:auto">${v.n} pendientes</span></div>
+    </article>`;
+  }
+  lienzo.innerHTML = h;
+}
+
+// ---- Status de aceite -------------------------------------------------
+// Los numeros los calcula otro programa y llegan dentro del paquete como
+// D.aceite (claves cortas, ver app/aceite.py:para_movil). Si no viene, el
+// boton no existe: mejor sin pestana que con una pestana vacia.
+const ACE = D.aceite || null;
+// El kilometraje va SOLO en la tarjeta de Aceite, que es su sitio: en la lista
+// de pendientes estorbaba y repetia por unidad un dato que no es del trabajo.
+const miles = n => (n == null || n === "") ? ""
+  : Math.round(Number(n)).toLocaleString("es-PE").replace(/,/g, " ");
+const SEM_COL = {"VENCIDO":"var(--c10)","CRITICO":"var(--c8)","PROXIMO":"var(--c6)",
+                 "OK":"var(--cbajo)","SIN DATO":"var(--cbajo)","INOPERATIVA":"var(--cbajo)"};
+const SEM_ORDEN = ["VENCIDO","CRITICO","PROXIMO","OK","SIN DATO","INOPERATIVA"];
+let semFiltro = "";
+
+function pintarAceite(){
+  if (!ACE){ lienzo.innerHTML = `<p class="vacio"><b>Sin status</b>Todavía no se ha publicado el status de aceite.</p>`; return; }
+  const t = sinTildes(texto).trim();
+  const casa = u => !t || sinTildes(u.p).includes(t) || sinTildes(u.op).includes(t)
+                  || sinTildes(u.cd||"").includes(t);
+  let us = ACE.u.filter(u => (!semFiltro || u.s === semFiltro) && casa(u));
+  us.sort((a,b) => SEM_ORDEN.indexOf(a.s) - SEM_ORDEN.indexOf(b.s) || (b.pc||0)-(a.pc||0));
+  const R = ACE.res || {};
+  const tile = (clave, valor, rot, clase) =>
+    `<button type="button" class="tile tsel${clase?" "+clase:""}" data-sem="${clave}"
+             aria-pressed="${semFiltro===clave}"><b>${valor||0}</b><span>${rot}</span></button>`;
+
+  let h = `<div class="resumen">
+      ${tile("VENCIDO", R.v, "vencidos", "rojo")}
+      ${tile("CRITICO", R.c, "críticos", "ambar")}
+      ${tile("PROXIMO", R.x, "próximos", "")}
+      ${tile("OK", R.ok, "al día de "+(R.n||0), "")}
+    </div>`;
+
+  // Chips de estado, en el lienzo (NO la barra azul de arriba).
+  h += `<div class="chips-lienzo">`;
+  for (const sname of SEM_ORDEN){
+    const n = ACE.u.filter(u => u.s === sname).length;
+    if (!n) continue;
+    h += `<button type="button" class="chip" data-sem="${sname}" aria-pressed="${semFiltro===sname}">`
+       + `${esc(rotSem(sname))}<span class="n">${n}</span></button>`;
+  }
+  h += `</div>`;
+
+  const cab = `Semana ${ACE.sem||"—"}`
+      + (ACE.ini ? ` · ${dia(ACE.ini)} al ${dia(ACE.fin)}` : "")
+      + ` · ${us.length} de ${ACE.u.length}`;
+  h += `<h2 class="seccion">${esc(cab)}</h2>`;
+  // Se dice cuando se calculo. Un status viejo miente sobre los kilometros de
+  // esta semana, y desde el telefono no hay forma de saberlo si no se pone.
+  if (ACE.gen){
+    const d0 = new Date(ACE.gen + "T00:00:00"), hoy = new Date();
+    const dd = Math.round((hoy - d0) / 86400000);
+    const sello = ACE.sel ? ` · archivo del ${dia(ACE.sel.slice(0,10))} ${ACE.sel.slice(11,16)}` : "";
+    h += `<p class="nota-ace${dd > 10 ? " vieja" : ""}">Calculado el ${dia(ACE.gen)}`
+       + (dd > 0 ? ` · hace ${dd} día${dd === 1 ? "" : "s"}` : " · hoy")
+       + esc(sello)
+       + (dd > 10 ? " — los kilómetros de esta semana ya no son estos" : "") + `</p>`;
+  }
+
+  if (!us.length){
+    h += `<p class="vacio"><b>Nada por aquí</b>Ninguna unidad coincide con este filtro.</p>`;
+  }
+  for (const u of us){
+    const col = SEM_COL[u.s] || "var(--cbajo)";
+    const pct = Math.max(0, Math.min(100, Math.round(u.pc||0)));
+    const falta = (u.r==null) ? "" : (u.r < 0
+        ? `pasada por ${Math.abs(Math.round(u.r)).toLocaleString("es-PE")} km`
+        : `le quedan ${Math.round(u.r).toLocaleString("es-PE")} km`);
+    h += `<article class="orden">
+      <div class="ocab">
+        <span class="punto" style="background:${col}"></span>
+        <span class="placa">${esc(u.p)}</span>
+        <span class="estado" style="background:${col};color:#fff">${esc(rotSem(u.s))}</span>
+        <span class="corr">${u.pc==null?"—":Math.round(u.pc)+"%"}</span>
+      </div>
+      <div class="ometa">${esc(u.op||"sin operación")}${u.cd?" · "+esc(u.cd):""}</div>
+      <div class="ometa">${esc(falta)}${u.f?" · cada "+Math.round(u.f).toLocaleString("es-PE")+" km":""}</div>
+      <div class="ometa">${u.py?"Toca "+dia(u.py):""}${u.uf?" · último cambio "+dia(u.uf):""}</div>
+      ${(u.km!=null||u.uk!=null) ? `<div class="okm">${
+          u.km!=null ? `<span>Km actual <b>${miles(u.km)}</b></span>` : ""}${
+          u.uk!=null ? `<span>Al cambiar <b>${miles(u.uk)}</b></span>` : ""}${
+          u.ds!=null ? `<span>Lleva <b>${miles(u.ds)}</b></span>` : ""}</div>` : ""}
+      <div class="progreso"><i style="width:${pct}%;background:${col}"></i></div>
+    </article>`;
+  }
+
+  // Cuándo le toca a cada una. Solo sin filtros: con un filtro puesto la
+  // agenda completa confunde en vez de ayudar.
+  const ag = (ACE.ag||[]).filter(a => (a.u||[]).length);
+  if (!semFiltro && !t && ag.length){
+    h += `<h2 class="seccion">Cuándo toca</h2>`;
+    for (const a of ag.slice(0,10)){
+      h += `<article class="orden" style="padding:9px 12px">
+        <div class="ocab"><span style="font-weight:600">${esc(a.e)}</span>
+          <span class="corr" style="margin-left:auto">${a.u.length}</span></div>
+        <div class="ometa">${esc(a.u.join(", "))}</div></article>`;
+    }
+  }
+
+  // Anomalías: siguen el buscador. Buscar «D8R» y que salgan ocho placas
+  // ajenas debajo es justo lo que no se entiende.
+  const an = (ACE.an||[]).filter(a => !t || sinTildes(a.p).includes(t));
+  if (!semFiltro && an.length){
+    h += `<h2 class="seccion">Revisar el registro (${an.length})</h2>`;
+    for (const a of an){
+      h += `<article class="orden" style="padding:9px 12px">
+        <div class="ocab"><span class="placa">${esc(a.p)}</span>
+          <span class="corr" style="margin-left:auto">${esc(a.t)}</span></div>
+        <div class="ometa">${esc(a.d)}</div></article>`;
+    }
+  }
+  lienzo.innerHTML = h;
+}
+
+// ---- Plan del dia ------------------------------------------------------
+// Lo arma el aplicativo de la PC con las placas que hay en el patio y viaja
+// en D.plan (claves cortas, ver app/plan.py:para_movil). TALLER es donde se
+// produce hoy; ARENA es el almacen: en espera, muchas veces porque no hay
+// tracto para moverla.
+const PLAN = D.plan || null;
+const PRIOR = ["MECANICO","ELECTRICO","INFRAESTRUCTURA"];
+let zonaPlan = "";
+
+function pintarPlan(){
+  if (!PLAN){ lienzo.innerHTML = `<p class="vacio"><b>Sin plan</b>Todavía no se ha publicado el plan del día.</p>`; return; }
+  const t = sinTildes(texto).trim();
+  let us = PLAN.u.filter(u => (!zonaPlan || u.z === zonaPlan)
+        && (!t || sinTildes(u.p).includes(t)
+            || u.w.some(w => sinTildes(w.x).includes(t) || sinTildes(w.c).includes(t))));
+  const R = PLAN.res || {};
+  const chip = (clave, rot, n) =>
+    `<button type="button" class="chip" data-zona="${clave}" aria-pressed="${zonaPlan===clave}">`
+    + `${rot}<span class="n">${n}</span></button>`;
+  let h = `<div class="resumen">
+      <div class="tile"><b>${R.n||0}</b><span>unidades</span></div>
+      <div class="tile"><b>${R.tr||0}</b><span>trabajos</span></div>
+      <div class="tile"><b>${R.p||0}</b><span>mec/elec/infra</span></div>
+      <div class="tile rojo"><b>${R.c||0}</b><span>críticos</span></div>
+    </div>
+    <div class="chips-lienzo">${chip("", "Todas", R.n||0)}
+      ${chip("TALLER","En taller",R.t||0)}${chip("ARENA","En arena",R.a||0)}</div>`;
+  if (PLAN.f) h += `<p class="nota-ace${PLAN.py?" vieja":""}">Plan del ${dia(PLAN.f)}`
+      + (PLAN.py ? " · todavía no empieza: es el proyectado" : "") + `</p>`;
+
+  // Quien atiende hoy. Sale antes que las unidades porque es lo primero que
+  // se pregunta al llegar al taller, y porque dice de una si alguien se quedo
+  // sin trabajo o si a otro no le cabe el dia.
+  const REP = PLAN.cg || [];
+// Quien esta repartido y ese dia no viene: pares [placa, tecnico].
+const FALTAN = new Set((PLAN.au || []).map(x => x[0] + "|" + x[1]));
+  if (REP.length && !zonaPlan && !t){
+    h += `<h2 class="seccion">Quién atiende hoy (${REP.length})</h2><div class="gente">`;
+    for (const g of REP){
+      const pc = g.hd ? Math.round(g.h / g.hd * 100) : 0;
+      const tono = g.e === "pasado" ? " pasado" : (g.e === "justo" ? " justo" : "");
+      h += `<article class="gpers">
+        <span class="ghor">${g.h}/${g.hd} h</span>
+        <div class="gnom">${esc(g.n)}</div>
+        <div class="gcat">${esc(rotCat(g.c))}</div>
+        <div class="gbar${tono}"><i style="width:${Math.min(100, pc)}%"></i></div>
+        <div class="gruta">` + (g.r && g.r.length
+          ? g.r.map((p, i) => `${i+1}· ${esc(p)}`).join(" &nbsp; ")
+          : `<em>sin unidad asignada</em>`)
+        + `</div></article>`;
+    }
+    h += `</div>`;
+  }
+
+  if ((PLAN.av||[]).length && !zonaPlan && !t){
+    h += `<h2 class="seccion">Ojo con esto</h2>`;
+    for (const a of PLAN.av){
+      h += `<article class="orden" style="padding:9px 12px">
+        <div class="ometa">${esc(a)}</div></article>`;
+    }
+  }
+
+  for (const zona of ["TALLER","ARENA"]){
+    const zs = us.filter(u => u.z === zona);
+    if (!zs.length) continue;
+    h += `<h2 class="seccion">${zona === "TALLER"
+        ? "En el taller · se trabaja hoy" : "En la arena · en espera"} (${zs.length})</h2>`;
+    for (const u of zs){
+      const col = colorNivel(nivel(u.k));
+      const abierta = abiertas.has("plan:"+u.p);
+      h += `<section class="unidad" data-abierta="${abierta?1:0}">
+        <button type="button" class="ucab" data-placa="plan:${esc(u.p)}"
+                aria-expanded="${abierta}">
+          <span class="punto" style="background:${col}"></span>
+          <span class="placa">${esc(u.p)}</span>
+          <span class="tipo">${esc(u.ti||"")}</span>
+          <span class="cuenta">${(u.as||[]).length
+            ? `<span class="qtec">${esc(u.as[0])}${u.as.length>1?" +"+(u.as.length-1):""}</span>`
+            : ""}${u.n} pend.
+            <svg class="flecha" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          </span>
+        </button>
+        <div class="trabajos">`;
+      if ((u.as||[]).length)
+        h += `<div class="quienes">` + u.as.map(x =>
+          `<span class="etq tec${FALTAN.has(u.p+"|"+x)?" falta":""}">${esc(x)}`
+          + (FALTAN.has(u.p+"|"+x) ? " · no viene" : "") + `</span>`).join("")
+          + `</div>`;
+      if (u.o) h += `<div class="ometa" style="padding:6px 12px 0">Ya tiene ${esc(u.o)} abierta</div>`;
+      if (u.ac === "VENCIDO" || u.ac === "CRITICO")
+        h += `<div class="ometa" style="padding:6px 12px 0">Cambio de aceite ${esc(u.ac.toLowerCase())}</div>`;
+      if (!u.n) h += `<div class="ometa" style="padding:8px 12px">Sin pendientes.</div>`;
+      for (const w of u.w){
+        const n2 = nivel(w.k), c2 = colorNivel(n2);
+        h += `<article class="trabajo">
+          <span class="franja" style="background:${c2}"></span>
+          <div class="tcuerpo">
+            <div class="tmeta">
+              <span class="crit" style="color:${c2}">${w.k==null?"–":w.k}</span>
+              <span class="cat">${esc(rotCat(w.c))}</span>
+              <span class="dias${w.d>30?" viejo":""}">${w.d} d</span>
+            </div>
+            <div class="texto">${esc(w.x)}</div>`;
+        if (w.g) h += `<div class="cod">${esc(w.g)}</div>`;
+        if (w.r) h += `<span class="etq espera">Espera: ${esc(w.r)}</span>`;
+        h += `</div></article>`;
+      }
+      if (u.mas) h += `<div class="ometa" style="padding:6px 12px 10px">y ${u.mas} más</div>`;
+      h += `</div></section>`;
+    }
+  }
+  // El proyectado de manana. Va recortado a proposito: lo que hace falta
+  // saber hoy no son los trabajos de cada unidad, es que placas entran y
+  // quien las agarra, para dejar pedido esta tarde lo que falte.
+  const MAN = PLAN.pr || null;
+  if (MAN && !zonaPlan && !t){
+    h += `<h2 class="seccion">Mañana · ${dia(MAN.f)} (proyectado)</h2>
+          <div class="manana">`;
+    h += `<p class="nota-ace">${MAN.n} unidades · ${MAN.t} en taller · `
+       + `${MAN.tr} trabajos · ${MAN.c} críticos</p>`;
+    for (const mu of MAN.u){
+      h += `<div class="mcard">
+        <span class="punto" style="background:${colorNivel(nivel(mu.k))}"></span>
+        <span class="placa">${esc(mu.p)}</span>
+        <span class="tipo">${esc(mu.ti||"")}</span>
+        <span class="mq">${mu.n} pend.`
+        + ((mu.as||[]).length ? `<br>${esc(mu.as.join(", "))}` : "")
+        + `</span></div>`;
+    }
+    h += `</div>`;
+  }
+
+  if (!us.length) h += `<p class="vacio"><b>Nada por aquí</b>Ninguna unidad coincide.</p>`;
+  lienzo.innerHTML = h;
+}
+
+// Tope de tarjetas dibujadas de una vez. Seis meses son mas de mil quinientos
+// trabajos y un telefono de taller no tiene que construir mil quinientas
+// tarjetas para responder «que se hizo ayer»: se pintan las primeras y se
+// dice cuantas quedan, que es lo que empuja a filtrar.
+const TOPE_HIST = 300;
+
+function pintarHistorial(){
+  const busca = sinTildes(texto).trim();
+  const filas = HIST.filter(p => {
+    if (cat && p.c !== cat) return false;
+    if (grupo === "mant"  && !MANT.has(p.c)) return false;
+    if (grupo === "otras" &&  MANT.has(p.c)) return false;
+    if (soloCriticos && !(p.k >= 8)) return false;
+    if (busca && !(sinTildes(p.u).includes(busca) || sinTildes(p.x).includes(busca)
+                || sinTildes(p.c).includes(busca) || sinTildes(p.q).includes(busca)
+                || sinTildes(p.o).includes(busca))) return false;
+    return true;
+  });
+
+  const flechaH = recientesArriba
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.8" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>`
+      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.8" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`;
+  const rotuloH = recientesArriba ? "Más recientes primero" : "Más antiguos primero";
+  const barra = `<div class="orden-barra">
+      <span class="orden-rot">Ordenar</span>
+      <button type="button" class="chip" data-criterio="fecha" title="${rotuloH}"
+              aria-pressed="true">${flechaH}Fecha</button>
+      <button type="button" class="chip vuelta" id="invertir"
+              title="${rotuloH} · pulsa para invertir"
+              aria-label="Invertir el orden: ahora, ${rotuloH}">${flechaH}</button>
+    </div>`;
+
+  if (!filas.length){
+    lienzo.innerHTML = barra + `<p class="vacio"><b>Nada por aquí</b>`
+      + (texto ? `Ningún trabajo hecho coincide con «${esc(texto)}».`
+               : `No hay trabajos hechos con este filtro.`) + `</p>`;
+    return;
+  }
+
+  // Las fechas vienen como AAAA-MM-DD, asi que comparar el texto ya es
+  // comparar la fecha: no hace falta construir un Date por tarjeta.
+  const orden = recientesArriba
+      ? (a,b) => (b.f||"").localeCompare(a.f||"") || (a.u||"").localeCompare(b.u||"")
+      : (a,b) => (a.f||"").localeCompare(b.f||"") || (a.u||"").localeCompare(b.u||"");
+  filas.sort(orden);
+
+  const unidades = new Set(filas.map(p => p.u)).size;
+  const corte = new Date(Date.now() - 30*864e5).toISOString().slice(0,10);
+  const ultimos = filas.filter(p => (p.f||"") >= corte).length;
+
+  let h = `<div class="resumen">
+      <div class="tile"><b>${filas.length}</b><span>trabajos hechos</span></div>
+      <div class="tile"><b>${unidades}</b><span>unidades</span></div>
+      <div class="tile"><b>${ultimos}</b><span>últimos 30 días</span></div>
+    </div>` + barra;
+
+  const muestra = filas.slice(0, TOPE_HIST);
+  let diaActual = null, abierta = false;
+  for (const p of muestra){
+    if (p.f !== diaActual){
+      if (abierta) h += `</div>`;
+      diaActual = p.f;
+      const cuantos = muestra.filter(x => x.f === p.f).length;
+      h += `<div class="hdia"><b>${esc(dia(p.f))}</b>
+              <span>${cuantos} trabajo${cuantos === 1 ? "" : "s"}</span></div>
+            <div class="hlista">`;
+      abierta = true;
+    }
+    const nv = nivel(p.k), col = colorNivel(nv);
+    h += `<article class="trabajo">
+      <span class="franja" style="background:${col}"></span>
+      <div class="tcuerpo">
+        <div class="tmeta">
+          <span class="hplaca">${esc(p.u)}</span>
+          <span class="htipo">${p.t === "C" ? "Carreta" : "Tracto"}</span>
+          <span class="cat">${esc(rotCat(p.c) || "sin categoría")}</span>
+          <span class="dias">${p.k == null ? "" : "crit. " + p.k}</span>
+        </div>
+        <div class="texto">${esc(p.x)}</div>`;
+    if (p.o) h += `<span class="etq orden">En ${esc(p.o)}</span>`;
+    if (p.q) h += `<span class="etq quien">Lo hizo ${esc(p.q)}</span>`;
+    h += `</div></article>`;
+  }
+  if (abierta) h += `</div>`;
+  if (filas.length > TOPE_HIST){
+    h += `<p class="hmas">Se muestran los primeros ${TOPE_HIST} de
+          ${filas.length}. Busca una placa o toca una especialidad para
+          acotar.</p>`;
+  }
+  lienzo.innerHTML = h;
+}
+
+// ---- Otras alertas (formato del checklist) -------------------------------
+// D.fmt (claves cortas, ver app/formato.py:para_movil). Lo que el conductor
+// MARCO en su ultimo checklist. Los dias se cuentan aqui, al mirar: el paquete
+// puede tener horas. Si no viene, el boton no existe.
+const FMT = D.fmt || null;
+const TEMAS_FMT = ["Documentos","Extintor","Llantas","Repsol","Carga","Seguridad"];
+let temaFmt = "", soloRojasFmt = false;
+// "grav" las rojas arriba · "ant" la alerta que lleva mas tiempo marcandose ·
+// "cant" la placa con mas alertas. Como en Pendientes, se recuerda.
+let ordenFmt = "grav";
+try { const g = JSON.parse(localStorage.getItem("taller-timco-fmt") || "{}");
+      if (["grav","ant","cant"].includes(g.orden)) ordenFmt = g.orden; } catch(e){}
+// Dias que lleva marcandose seguido la alerta mas vieja de la placa (a[6]).
+const abiertaFmt = u => Math.max(0, ...u.a.map(a => a[6] ? diasDesde(a[6]) : 0));
+const diasDesde = iso => Math.max(0, Math.floor((Date.now() - new Date(iso + "T00:00:00")) / 86400000));
+
+function pintarFormato(){
+  if (!FMT){ lienzo.innerHTML = `<p class="vacio"><b>Sin datos</b>Todavía no se ha publicado el formato del checklist.</p>`; return; }
+  const t = sinTildes(texto).trim();
+  const base = FMT.u.map(u => Object.assign({}, u, {d: diasDesde(u.f)}))
+    .filter(u => !t || sinTildes(u.p).includes(t) || (u.g || "").includes(t));
+  const conTema = tm => base.filter(u => u.a.some(a => a[0] === tm)).length;
+  const esRoja = u => u.a.some(a => a[3] === "r");
+  const vis = base.filter(u => (!temaFmt || u.a.some(a => a[0] === temaFmt))
+                            && (!soloRojasFmt || esRoja(u)));
+  const peso = u => u.a.filter(a => a[3] === "r").length * 100 + u.a.length * 10;
+  for (const u of vis) u.ab = abiertaFmt(u);
+  if (ordenFmt === "ant")
+    vis.sort((x,y) => y.ab - x.ab || peso(y) - peso(x) || x.p.localeCompare(y.p));
+  else if (ordenFmt === "cant")
+    vis.sort((x,y) => y.a.length - x.a.length || peso(y) - peso(x) || x.d - y.d);
+  else
+    vis.sort((x,y) => peso(y) - peso(x) || x.d - y.d || x.p.localeCompare(y.p));
+
+  let h = `<div class="resumen">
+      <div class="tile rojo"><b>${base.filter(esRoja).length}</b><span>con alerta roja</span></div>
+      <div class="tile"><b>${conTema("Extintor")}</b><span>extintor</span></div>
+      <div class="tile"><b>${conTema("Llantas")}</b><span>llantas</span></div>
+      <div class="tile"><b>${conTema("Documentos")}</b><span>documentos</span></div>
+      <div class="tile ambar"><b>${base.filter(u => u.d > 15).length}</b><span>checklist +15 días</span></div>
+    </div>
+    <div class="chips-lienzo">
+      <button type="button" class="chip" data-tfmt="" aria-pressed="${!temaFmt}">Todo<span class="n">${base.length}</span></button>`;
+  for (const tm of TEMAS_FMT){
+    const n = conTema(tm); if (!n) continue;
+    h += `<button type="button" class="chip" data-tfmt="${tm}" aria-pressed="${temaFmt===tm}">${tm}<span class="n">${n}</span></button>`;
+  }
+  h += `<button type="button" class="chip" data-rfmt="1" aria-pressed="${soloRojasFmt}">Solo rojas</button>
+    </div>
+    <div class="orden-barra">
+      <span class="orden-rot">Ordenar</span>
+      <button type="button" class="chip" data-ofmt="grav" aria-pressed="${ordenFmt==="grav"}">Gravedad</button>
+      <button type="button" class="chip" data-ofmt="ant" aria-pressed="${ordenFmt==="ant"}">Antigüedad</button>
+      <button type="button" class="chip" data-ofmt="cant" aria-pressed="${ordenFmt==="cant"}">Cantidad</button>
+    </div>
+    <p class="nota-ace">Último checklist de cada unidad${FMT.h ? ` · leído hasta el ${dia(FMT.h)}` : ""}.
+      Si tiene muchos días, puede haber cambiado.${(FMT.n||[]).length ? ` ${FMT.n.length} unidades nunca hicieron checklist.` : ""}</p>`;
+  if (!vis.length){
+    lienzo.innerHTML = h + `<p class="vacio"><b>Nada por aquí</b>Ninguna unidad con ese filtro.</p>`;
+    return;
+  }
+  const tipoU = u => u.l === "K" ? "Camión" : u.l === "C" ? "Carreta" : "Tracto";
+  for (const u of vis){
+    const clase = u.d <= 7 ? "ok" : u.d <= 15 ? "medio" : "viejo";
+    h += `<section class="fcard">
+      <div class="fcab"><span class="placa">${esc(u.p)}</span>
+        <span class="tipo">${tipoU(u)}${u.y ? " · " + esc(u.y) : ""}</span>
+        <span class="fdias ${clase}">${u.d ? `hace ${u.d} d` : "hoy"}</span></div>
+      <div class="cod">checklist ${esc(u.g)} · ${dia(u.f)}${
+        ordenFmt === "ant" && u.ab ? ` · la más antigua lleva ${u.ab} d` :
+        ordenFmt === "cant" ? ` · ${u.a.length} alerta${u.a.length === 1 ? "" : "s"}` : ""}</div>
+      <ul class="flista">`;
+    for (const tm of TEMAS_FMT){
+      if (temaFmt && tm !== temaFmt) continue;
+      const lista = u.a.filter(a => a[0] === tm);
+      if (!lista.length) continue;
+      h += `<li class="ftema">${tm}</li>`;
+      for (const a of lista){
+        const col = a[3] === "r" ? "var(--c10)" : "var(--c8)";
+        h += `<li><span class="punto" style="background:${col}"></span>
+          <span><span class="fnom">${esc(a[1])}</span> <span class="fdet">${esc(a[2])}</span></span>
+          ${a[5] ? `<span class="fvez" title="veces que lo marcó en los últimos 90 días">${a[4]}/${a[5]}</span>` : ""}</li>`;
+      }
+    }
+    h += `</ul></section>`;
+  }
+  lienzo.innerHTML = h;
+}
+
+function pintar(){
+  pintarChips();
+  // OJO: .chips es display:flex, asi que `hidden` NO la esconde -- la misma
+  // trampa que tapaba la pantalla con la puerta del PIN. Se toca el display.
+  chips.style.display = (vista === "ace" || vista === "plan" || vista === "fmt") ? "none" : "";
+  if (vista === "pend") pintarPendientes();
+  else if (vista === "ord") pintarOrdenes();
+  else if (vista === "ace") pintarAceite();
+  else if (vista === "plan") pintarPlan();
+  else if (vista === "hist") pintarHistorial();
+  else if (vista === "fmt") pintarFormato();
+  else pintarResumen();
+}
+if (ACE) document.getElementById("btnace").hidden = false;
+if (PLAN) document.getElementById("btnplan").hidden = false;
+if (HIST.length) document.getElementById("btnhist").hidden = false;
+if (FMT && FMT.u) document.getElementById("btnfmt").hidden = false;
+
+chips.addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  if (b.dataset.critico) soloCriticos = !soloCriticos;
+  else if (b.dataset.grupo !== undefined && b.dataset.cat === undefined){
+    // Pulsar el grupo que ya esta puesto lo quita, como los demas chips.
+    grupo = (grupo === b.dataset.grupo) ? "" : b.dataset.grupo;
+  }
+  else { cat = b.dataset.cat; grupo = ""; }
+  recordar(); pintar();
+});
+lienzo.addEventListener("click", e => {
+  const chipFmt = e.target.closest("[data-tfmt]");
+  if (chipFmt){ temaFmt = (temaFmt === chipFmt.dataset.tfmt) ? "" : chipFmt.dataset.tfmt;
+                pintar(); return; }
+  if (e.target.closest("[data-rfmt]")){ soloRojasFmt = !soloRojasFmt; pintar(); return; }
+  const chipOFmt = e.target.closest("[data-ofmt]");
+  if (chipOFmt){ ordenFmt = chipOFmt.dataset.ofmt;
+                 try { localStorage.setItem("taller-timco-fmt", JSON.stringify({orden: ordenFmt})); } catch(e){}
+                 pintar(); return; }
+  const chipZona = e.target.closest("[data-zona]");
+  if (chipZona){ zonaPlan = chipZona.dataset.zona;
+                 window.scrollTo({top:0}); pintar(); return; }
+  const chipSem = e.target.closest("[data-sem]");
+  if (chipSem){ semFiltro = (semFiltro === chipSem.dataset.sem) ? "" : chipSem.dataset.sem;
+                window.scrollTo({top:0}); pintar(); return; }
+  const chipOrd = e.target.closest(".chip[data-criterio]");
+  if (chipOrd){
+    // En el historial solo hay un criterio -- la fecha --, asi que pulsarlo
+    // es darle la vuelta, igual que pulsar el criterio ya activo en la
+    // pantalla de pendientes.
+    if (vista === "hist") recientesArriba = !recientesArriba;
+    else if (criterio === chipOrd.dataset.criterio) viejosArriba = !viejosArriba;
+    else { criterio = chipOrd.dataset.criterio; viejosArriba = true; }
+    recordar(); pintar(); return;
+  }
+  if (e.target.closest("#invertir")){
+    if (vista === "hist") recientesArriba = !recientesArriba;
+    else viejosArriba = !viejosArriba;
+    recordar(); pintar(); return;
+  }
+  const b = e.target.closest(".ucab"); if (!b) return;
+  const placa = b.dataset.placa, s = b.closest(".unidad");
+  const abierta = s.dataset.abierta === "1";
+  s.dataset.abierta = abierta ? "0" : "1";
+  b.setAttribute("aria-expanded", String(!abierta));
+  if (abierta) abiertas.delete(placa); else abiertas.add(placa);
+});
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
+  vista = b.dataset.vista;
+  document.querySelectorAll("nav button").forEach(x =>
+    x.removeAttribute("aria-current"));
+  b.setAttribute("aria-current", "page");
+  window.scrollTo({top:0});
+  pintar();
+}));
+let t0;
+caja.addEventListener("input", () => {
+  texto = caja.value; limpiar.hidden = !texto;
+  clearTimeout(t0); t0 = setTimeout(pintar, 140);
+});
+limpiar.addEventListener("click", () => {
+  caja.value = ""; texto = ""; limpiar.hidden = true; caja.focus(); pintar();
 });
 
-// ---------- cerrar ----------
-function abrir(id){
-  const t=S.trab.find(x=>x.id===id); const o=S.ord.find(x=>x.id===t.orden_id)||{};
-  S.sheet={id,res:null,file:null};
-  $('shMeta').innerHTML=`<span class="plate">${esc(o.placa)}</span><b>${esc(o.id)}</b>`; $('shDesc').textContent=t.descripcion;
-  document.querySelectorAll('.opt').forEach(x=>x.setAttribute('aria-pressed','false'));
-  $('shMot').value=''; $('shCom').value=''; $('shFoto').value=''; $('shPrev').hidden=true; $('shErr').textContent='';
-  $('shOk').disabled=false; $('shOk').textContent='Guardar cierre'; req(); $('sheet').hidden=false;
-}
-function cerrarHoja(){ $('sheet').hidden=true; S.sheet=null; }
-function req(){ const r=S.sheet&&S.sheet.res; $('shErr').textContent=''; $('motBox').hidden=r!=='ANULADO';
-  $('comReq').textContent=(r==='NO_SE_PUDO'||(r==='ANULADO'&&$('shMot').value==='Otro'))?'(obligatorio)':'(opcional)';
-  $('fotoReq').textContent=r==='HECHO'?'(obligatoria)':'(opcional)'; }
-$('shMot').onchange=req; $('shNo').onclick=cerrarHoja; $('shBg').onclick=cerrarHoja;
-$('shFoto').onchange=e=>{ const f=e.target.files[0]; S.sheet.file=f||null; if(f){ $('shPrev').src=URL.createObjectURL(f); $('shPrev').hidden=false; } };
-async function comprimir(file){
-  const url=URL.createObjectURL(file);
-  try{ const img=await new Promise((ok,no)=>{const i=new Image(); i.onload=()=>ok(i); i.onerror=no; i.src=url;});
-    const k=Math.min(1,1600/Math.max(img.width,img.height)); const c=document.createElement('canvas');
-    c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-    return await new Promise(ok=>c.toBlob(b=>ok(b),'image/jpeg',0.75));
-  } finally { URL.revokeObjectURL(url); }
-}
-$('shOk').onclick = async () => {
-  const sh=S.sheet, err=$('shErr'); err.textContent='';
-  const com=$('shCom').value.trim(), mot=sh.res==='ANULADO'?$('shMot').value:null;
-  if(!sh.res) return err.textContent='Elige Hecho, No se pudo o Anular.';
-  if(sh.res==='ANULADO'&&!mot) return err.textContent=ERRORES.FALTA_MOTIVO;
-  if((sh.res==='NO_SE_PUDO'||mot==='Otro')&&!com) return err.textContent=ERRORES.FALTA_COMENTARIO;
-  if(sh.res==='HECHO'&&!sh.file) return err.textContent=ERRORES.FALTA_FOTO;
-  if(!navigator.onLine) return err.textContent='Sin señal. Intenta de nuevo cuando vuelva la conexión.';
-  const btn=$('shOk'); btn.disabled=true;
-  try{
-    let ruta=null;
-    if(sh.file){ btn.textContent='Subiendo foto…'; const blob=await comprimir(sh.file);
-      ruta=`${sh.id}/${Date.now()}.jpg`;
-      const up=await sb.storage.from('evidencias').upload(ruta, blob, {contentType:'image/jpeg', upsert:false});
-      if(up.error) throw up.error; }
-    btn.textContent='Guardando…';
-    const { error } = await sb.rpc('cerrar_trabajo',{p_trabajo:sh.id,p_estado:sh.res,p_comentario:com||null,p_motivo:mot,p_foto:ruta});
-    if(error) throw error;
-    cerrarHoja(); toast(sh.res==='HECHO'?'Trabajo cerrado como hecho.':sh.res==='ANULADO'?'Trabajo anulado.':'Registrado como no se pudo.');
-    cargar();
-  }catch(e){
-    const c=codigoDe(e); err.textContent = ERRORES[c] || 'No se pudo guardar. Revisa la señal e inténtalo otra vez.';
-    if(c==='YA_CERRADO'){ cerrarHoja(); toast(ERRORES.YA_CERRADO); cargar(); }
-    btn.disabled=false; btn.textContent='Guardar cierre';
-  }
+pintar();
 };
-sb.auth.onAuthStateChange(ev=>{ if(ev==='SIGNED_OUT') location.reload(); });
-arrancar();
+</script>
+<script>
+/* ------------------------------------------------------------------
+   Puerta y carga de datos.
+
+   El archivo datos.json esta en una direccion publica, asi que viaja
+   cifrado. El PIN no viaja nunca: se teclea aqui, se deriva la clave con
+   PBKDF2 y se descifra en el propio telefono.
+
+   Lo ultimo descifrado queda guardado en el telefono, asi que la pagina
+   abre al instante y sigue sirviendo cuando el taller no tiene senal.
+------------------------------------------------------------------ */
+(function(){
+"use strict";
+const RUTA   = "datos.json";
+const K_PIN  = "taller-timco-pin";
+const K_DAT  = "taller-timco-cache";
+const K_FEC  = "taller-timco-cache-fecha";
+const puerta = document.getElementById("puerta");
+const aviso  = document.getElementById("aviso");
+const boton  = document.getElementById("entrar");
+const campo  = document.getElementById("pin");
+const cinta  = document.getElementById("cinta");
+
+const leer    = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+const anotar  = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
+const olvidar = k => { try { localStorage.removeItem(k); } catch(e){} };
+const bytes   = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const cuandoLegible = s =>
+  s ? s.slice(8,10)+"/"+s.slice(5,7)+" a las "+s.slice(11,16) : "antes";
+
+async function clave(pin, sal, vueltas){
+  const semilla = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt:sal, iterations:vueltas, hash:"SHA-256"},
+    semilla, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+}
+
+async function abrir(sobre, pin){
+  const k = await clave(pin, bytes(sobre.sal), sobre.vueltas || 200000);
+  const claro = await crypto.subtle.decrypt(
+    {name:"AES-GCM", iv:bytes(sobre.iv)}, k, bytes(sobre.datos));
+  return new TextDecoder().decode(claro);
+}
+
+async function bajar(){
+  const r = await fetch(RUTA + "?t=" + Date.now(), {cache:"no-store"});
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+let pintado = null;   // la marca de tiempo de lo que ya se esta viendo
+
+function pintar(texto, generado){
+  puerta.hidden = true;
+  if (pintado === null){
+    pintado = generado || "sin-fecha";
+    window.arrancar(JSON.parse(texto));
+  } else if (generado && generado !== pintado){
+    hayNuevo();
+  }
+}
+
+function hayNuevo(){
+  if (!cinta) return;
+  cinta.hidden = false;
+  cinta.innerHTML = 'Hay datos más nuevos. <button type="button">Actualizar</button>';
+  cinta.querySelector("button").addEventListener("click", () => location.reload());
+}
+
+function sinSenal(cuando){
+  if (!cinta) return;
+  cinta.hidden = false;
+  cinta.textContent = "Sin conexión — mostrando lo guardado el " + cuandoLegible(cuando);
+}
+
+/* Devuelve: "bien" | "pin" | "red" */
+async function intentar(pin){
+  let sobre;
+  try { sobre = await bajar(); } catch(e){ return "red"; }
+  let texto;
+  try { texto = await abrir(sobre, pin); } catch(e){ return "pin"; }
+  anotar(K_PIN, pin);
+  anotar(K_DAT, texto);
+  anotar(K_FEC, sobre.generado || "");
+  if (cinta) cinta.hidden = true;
+  pintar(texto, sobre.generado);
+  return "bien";
+}
+
+document.getElementById("formpin").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const pin = campo.value.trim();
+  if (!pin) return;
+  boton.disabled = true; aviso.textContent = "Comprobando...";
+  const r = await intentar(pin);
+  boton.disabled = false;
+  if (r === "bien") { aviso.textContent = ""; campo.value = ""; }
+  else if (r === "pin") { aviso.textContent = "PIN incorrecto."; campo.select(); }
+  else { aviso.textContent = "Sin conexión. Conéctate una vez para bajar los datos."; }
+});
+
+(async function(){
+  const pin = leer(K_PIN);
+  if (!pin) { campo.focus(); return; }
+  const cache = leer(K_DAT);
+  if (cache) { try { pintar(cache, leer(K_FEC)); } catch(e){} }   // al instante
+  const r = await intentar(pin);                                  // y la red despues
+  if (r === "red" && pintado !== null) sinSenal(leer(K_FEC));
+  if (r === "pin") {
+    olvidar(K_PIN);
+    if (pintado === null) { campo.focus(); aviso.textContent =
+      "El PIN cambió. Pídeselo a mantenimiento."; }
+  }
+})();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () =>
+    navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+})();
 </script>
 </body>
 </html>
