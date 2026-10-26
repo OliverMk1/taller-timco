@@ -820,14 +820,42 @@ function pintarAceite(){
 // en D.plan (claves cortas, ver app/plan.py:para_movil). TALLER es donde se
 // produce hoy; ARENA es el almacen: en espera, muchas veces porque no hay
 // tracto para moverla.
-const PLAN = D.plan || null;
+// 2.56 (26-10-2026): los planes de la semana. Hoy y lo proyectado, cada uno
+// con su fecha; se elige el dia arriba. El de hoy sigue siendo el ultimo que
+// ya llego. Si el paquete es de antes, se usa el plan de siempre.
+const PLANES = (D.planes && Array.isArray(D.planes.d) && D.planes.d.length)
+  ? D.planes.d : (D.plan ? [D.plan] : []);
+let diaPlan = ((PLANES.filter(p => p.hoy).pop()) || PLANES[0] || {}).f || "";
+let PLAN = PLANES.find(p => p.f === diaPlan) || PLANES[0] || null;
+// Auxilios mecanicos y unidades marcadas «en taller» (los anota el
+// administrador en la pagina del tecnico; llegan con la vuelta de la PC).
+const AUX = Array.isArray(D.aux) ? D.aux : [];
+const EST = Array.isArray(D.est) ? D.est : [];
+const estDe = p => EST.find(e => e.p === p);
+const AUXE = {REGISTRADO:"Registrado", EN_CAMINO:"En camino", ATENDIDO:"Atendido",
+              REMOLCADO:"Remolcado", CANCELADO:"Cancelado"};
+// Ver el plan de un tecnico: cada uno ve lo suyo. Se recuerda en el telefono.
+let tecPlan = "", catPlan = "";
+try { tecPlan = localStorage.getItem("taller-timco-tec") || ""; } catch(e){}
+const mismoTec = (a, b) => { a = sinTildes(a).trim(); b = sinTildes(b).trim();
+  return !!a && !!b && (a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a)))); };
+const barraAv = (h, t) => { const p = t ? Math.round(100*h/t) : 0;
+  return `<div class="gbar${p>=80?"":p>=40?" justo":" pasado"}"><i style="width:${p}%"></i></div>`; };
 const PRIOR = ["MECANICO","ELECTRICO","INFRAESTRUCTURA"];
 let zonaPlan = "";
 
 function pintarPlan(){
   if (!PLAN){ lienzo.innerHTML = `<p class="vacio"><b>Sin plan</b>Todavía no se ha publicado el plan del día.</p>`; return; }
   const t = sinTildes(texto).trim();
-  let us = PLAN.u.filter(u => (!zonaPlan || u.z === zonaPlan)
+  const hoyF = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  const nombres = (PLAN.cg || []).map(g => g.n);
+  if (tecPlan && !nombres.some(n => mismoTec(n, tecPlan))) tecPlan = "";
+  const gTec = tecPlan ? (PLAN.cg || []).find(g => mismoTec(g.n, tecPlan)) : null;
+  let us0 = PLAN.u.map(u => ({...u, w: (u.w || []).filter(w =>
+        (!catPlan || w.c === catPlan) && (!gTec || !gTec.c || w.c === gTec.c))}))
+    .filter(u => (!tecPlan || (u.as || []).some(x => mismoTec(x, tecPlan)))
+                 && (!(catPlan || gTec) || u.w.length));
+  let us = us0.filter(u => (!zonaPlan || u.z === zonaPlan)
         && (!t || sinTildes(u.p).includes(t)
             || u.w.some(w => sinTildes(w.x).includes(t) || sinTildes(w.c).includes(t))));
   const R = PLAN.res || {};
@@ -842,8 +870,52 @@ function pintarPlan(){
     </div>
     <div class="chips-lienzo">${chip("", "Todas", R.n||0)}
       ${chip("TALLER","En taller",R.t||0)}${chip("ARENA","En arena",R.a||0)}</div>`;
-  if (PLAN.f) h += `<p class="nota-ace${PLAN.py?" vieja":""}">Plan del ${dia(PLAN.f)}`
-      + (PLAN.py ? " · todavía no empieza: es el proyectado" : "") + `</p>`;
+  const futuro = PLAN.f > hoyF || PLAN.py;
+  if (PLANES.length > 1)
+    h = `<div class="chips-lienzo">` + PLANES.map(p => `<button type="button" class="chip" data-diaplan="${esc(p.f)}" aria-pressed="${p.f===PLAN.f}">${p.f===hoyF?"Hoy":p.f<hoyF?"Último "+dia(p.f):dia(p.f)}</button>`).join("") + `</div>` + h;
+  if (PLAN.f) h += `<p class="nota-ace${futuro?" vieja":""}">Plan del ${dia(PLAN.f)}`
+      + (futuro ? " · PROYECTADO: puede cambiar si hay imprevistos" : "") + `</p>`;
+  if (nombres.length)
+    h += `<div class="chips-lienzo"><button type="button" class="chip" data-tecplan="" aria-pressed="${!tecPlan}">Todos</button>`
+       + nombres.map(n => `<button type="button" class="chip" data-tecplan="${esc(n)}" aria-pressed="${mismoTec(n,tecPlan)}">${esc(n)}</button>`).join("") + `</div>`;
+  const catsPlan = [...new Set(PLAN.u.flatMap(u => (u.w||[]).map(w => w.c)).filter(Boolean))];
+  if (!gTec && catsPlan.length > 1)
+    h += `<div class="chips-lienzo"><button type="button" class="chip" data-catplan="" aria-pressed="${!catPlan}">Todas</button>`
+       + catsPlan.map(c => `<button type="button" class="chip" data-catplan="${esc(c)}" aria-pressed="${catPlan===c}">${esc(rotCat(c))}</button>`).join("") + `</div>`;
+  // El avance del dia: trabajos del plan cerrados / planificados (taller).
+  const AV = PLAN.avz;
+  if (AV && AV.t && !futuro && !zonaPlan && !t){
+    let mio = null;
+    if (gTec){ const x = Object.entries(AV.pt || {}).find(([n]) => mismoTec(n, gTec.n)); mio = x ? x[1] : [0,0]; }
+    const [hh, tt] = mio || [AV.h, AV.t];
+    h += `<h2 class="seccion">Avance ${gTec ? "de " + esc(gTec.n) : "del día"}: ${tt ? Math.round(100*hh/tt) : 0}%</h2>
+      <article class="orden" style="padding:10px 12px"><div class="ometa">${hh} de ${tt} trabajos del taller cerrados</div>${barraAv(hh, tt)}`;
+    if (!gTec){
+      for (const [c, v] of Object.entries(AV.pc || {}).sort((a,b) => b[1][1]-a[1][1]))
+        if (v[1]) h += `<div class="ometa">${esc(rotCat(c))} · ${v[0]}/${v[1]}</div>${barraAv(v[0], v[1])}`;
+      for (const [n, v] of Object.entries(AV.pt || {}))
+        if (v[1]) h += `<div class="ometa">${esc(n)} · ${v[0]}/${v[1]}</div>${barraAv(v[0], v[1])}`;
+    }
+    h += `</article>`;
+  }
+  if (!zonaPlan && !t && !tecPlan){
+    const vivos = AUX.filter(a => a.e === "EN_CAMINO" || a.e === "REGISTRADO");
+    if (AUX.length){
+      h += `<h2 class="seccion">Auxilios mecánicos${vivos.length ? " · " + vivos.length + " en camino" : ""}</h2>`;
+      for (const a of AUX.slice(0, 12))
+        h += `<article class="orden" style="padding:9px 12px"><div><span class="placa">${esc(a.p)}</span>
+          <span class="etq ${a.e==="EN_CAMINO"||a.e==="REGISTRADO"?"veces":"espera"}">${esc(AUXE[a.e]||a.e)}</span></div>
+          <div class="texto">${esc(a.d)}</div>
+          <div class="ometa">${esc(dia(a.fe || a.f))}${a.hr?" · "+esc(a.hr):""}${a.l?" · "+esc(a.l):""}${a.a?" · fue "+esc(a.a):""}</div></article>`;
+    }
+    if (EST.length){
+      h += `<h2 class="seccion">Unidades en taller (${EST.length})</h2><div class="gente">`;
+      for (const e of EST)
+        h += `<article class="gpers"><span class="ghor">${e.dias} días</span><div class="gnom">${esc(e.p)}</div>
+          <div class="gcat">Desde ${esc(dia(e.desde))}${e.n ? " · " + esc(e.n) : ""}</div></article>`;
+      h += `</div>`;
+    }
+  }
 
   // Quien atiende hoy. Sale antes que las unidades porque es lo primero que
   // se pregunta al llegar al taller, y porque dice de una si alguien se quedo
@@ -851,7 +923,7 @@ function pintarPlan(){
   const REP = PLAN.cg || [];
 // Quien esta repartido y ese dia no viene: pares [placa, tecnico].
 const FALTAN = new Set((PLAN.au || []).map(x => x[0] + "|" + x[1]));
-  if (REP.length && !zonaPlan && !t){
+  if (REP.length && !zonaPlan && !t && !tecPlan){
     h += `<h2 class="seccion">Quién atiende hoy (${REP.length})</h2><div class="gente">`;
     for (const g of REP){
       const pc = g.hd ? Math.round(g.h / g.hd * 100) : 0;
@@ -869,7 +941,7 @@ const FALTAN = new Set((PLAN.au || []).map(x => x[0] + "|" + x[1]));
     h += `</div>`;
   }
 
-  if ((PLAN.av||[]).length && !zonaPlan && !t){
+  if ((PLAN.av||[]).length && !zonaPlan && !t && !tecPlan){
     h += `<h2 class="seccion">Ojo con esto</h2>`;
     for (const a of PLAN.av){
       h += `<article class="orden" style="padding:9px 12px">
@@ -877,23 +949,37 @@ const FALTAN = new Set((PLAN.au || []).map(x => x[0] + "|" + x[1]));
     }
   }
 
-  for (const zona of ["TALLER","ARENA"]){
-    const zs = us.filter(u => u.z === zona);
-    if (!zs.length) continue;
-    h += `<h2 class="seccion">${zona === "TALLER"
-        ? "En el taller · se trabaja hoy" : "En la arena · en espera"} (${zs.length})</h2>`;
+  // Separado por categorias (2.56): en el taller, cada especialidad con sus
+  // unidades y solo sus trabajos; la arena va aparte, como siempre.
+  const grupos = [];
+  const enTaller = us.filter(u => u.z === "TALLER");
+  const cats = [...new Set(enTaller.flatMap(u => u.w.map(w => w.c)))]
+    .map(c => [c, enTaller.filter(u => u.w.some(w => w.c === c)).length]).sort((a,b) => b[1]-a[1]);
+  for (const [c] of cats){
+    const zs = enTaller.filter(u => u.w.some(w => w.c === c)).map(u => ({...u, w: u.w.filter(w => w.c === c), mas: 0}));
+    const hh = zs.reduce((n,u) => n + u.w.filter(w => w.h).length, 0), tt = zs.reduce((n,u) => n + u.w.filter(w => !w.xx).length, 0);
+    grupos.push([c, `${esc(rotCat(c) || "Sin categoría")} · ${zs.length} ${zs.length===1?"unidad":"unidades"}` + (futuro ? "" : ` · ${hh}/${tt} hechos`), zs]);
+  }
+  const sinTrab = enTaller.filter(u => !u.w.length);
+  if (sinTrab.length) grupos.push(["SIN", `En el taller sin pendientes (${sinTrab.length})`, sinTrab]);
+  const enArena = us.filter(u => u.z === "ARENA");
+  if (enArena.length) grupos.push(["ARENA", `En la arena · en espera (${enArena.length})`, enArena]);
+  for (const [gk, titulo, zs] of grupos){
+    h += `<h2 class="seccion">${titulo}</h2>`;
     for (const u of zs){
       const col = colorNivel(nivel(u.k));
-      const abierta = abiertas.has("plan:"+u.p);
+      const clave = "plan:" + gk + ":" + u.p;
+      const abierta = abiertas.has(clave);
+      const est = estDe(u.p);
       h += `<section class="unidad" data-abierta="${abierta?1:0}">
-        <button type="button" class="ucab" data-placa="plan:${esc(u.p)}"
+        <button type="button" class="ucab" data-placa="${esc(clave)}"
                 aria-expanded="${abierta}">
           <span class="punto" style="background:${col}"></span>
           <span class="placa">${esc(u.p)}</span>
-          <span class="tipo">${esc(u.ti||"")}</span>
+          <span class="tipo">${esc(u.ti||"")}${est ? " · " + est.dias + " d" : ""}</span>
           <span class="cuenta">${(u.as||[]).length
             ? `<span class="qtec">${esc(u.as[0])}${u.as.length>1?" +"+(u.as.length-1):""}</span>`
-            : ""}${u.n} pend.
+            : ""}${gk === "ARENA" || gk === "SIN" ? u.n + " pend." : u.w.length + " trab."}
             <svg class="flecha" width="14" height="14" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </span>
@@ -905,6 +991,7 @@ const FALTAN = new Set((PLAN.au || []).map(x => x[0] + "|" + x[1]));
           + (FALTAN.has(u.p+"|"+x) ? " · no viene" : "") + `</span>`).join("")
           + `</div>`;
       if (u.o) h += `<div class="ometa" style="padding:6px 12px 0">Ya tiene ${esc(u.o)} abierta</div>`;
+      if (est) h += `<div class="ometa" style="padding:6px 12px 0"><span class="etq veces">Lleva ${est.dias} días en el taller</span></div>`;
       if (u.ac === "VENCIDO" || u.ac === "CRITICO")
         h += `<div class="ometa" style="padding:6px 12px 0">Cambio de aceite ${esc(u.ac.toLowerCase())}</div>`;
       if (!u.n) h += `<div class="ometa" style="padding:8px 12px">Sin pendientes.</div>`;
@@ -917,6 +1004,7 @@ const FALTAN = new Set((PLAN.au || []).map(x => x[0] + "|" + x[1]));
               <span class="crit" style="color:${c2}">${w.k==null?"–":w.k}</span>
               <span class="cat">${esc(rotCat(w.c))}</span>
               <span class="dias${w.d>30?" viejo":""}">${w.d} d</span>
+              ${w.h ? `<span class="etq orden">Hecho</span>` : w.xx ? `<span class="etq espera">Anulado</span>` : ""}
             </div>
             <div class="texto">${esc(w.x)}</div>`;
         if (w.g) h += `<div class="cod">${esc(w.g)}</div>`;
@@ -1149,7 +1237,7 @@ function pintar(){
   else pintarResumen();
 }
 if (ACE) document.getElementById("btnace").hidden = false;
-if (PLAN) document.getElementById("btnplan").hidden = false;
+if (PLAN || AUX.length || EST.length) document.getElementById("btnplan").hidden = false;
 if (HIST.length) document.getElementById("btnhist").hidden = false;
 if (FMT && FMT.u) document.getElementById("btnfmt").hidden = false;
 
@@ -1172,6 +1260,15 @@ lienzo.addEventListener("click", e => {
   if (chipOFmt){ ordenFmt = chipOFmt.dataset.ofmt;
                  try { localStorage.setItem("taller-timco-fmt", JSON.stringify({orden: ordenFmt})); } catch(e){}
                  pintar(); return; }
+  const chipDia = e.target.closest("[data-diaplan]");
+  if (chipDia){ diaPlan = chipDia.dataset.diaplan; PLAN = PLANES.find(p => p.f === diaPlan) || PLAN;
+                window.scrollTo({top:0}); pintar(); return; }
+  const chipTec = e.target.closest("[data-tecplan]");
+  if (chipTec){ tecPlan = chipTec.dataset.tecplan; catPlan = "";
+                try { localStorage.setItem("taller-timco-tec", tecPlan); } catch(e){}
+                window.scrollTo({top:0}); pintar(); return; }
+  const chipCat = e.target.closest("[data-catplan]");
+  if (chipCat){ catPlan = chipCat.dataset.catplan; window.scrollTo({top:0}); pintar(); return; }
   const chipZona = e.target.closest("[data-zona]");
   if (chipZona){ zonaPlan = chipZona.dataset.zona;
                  window.scrollTo({top:0}); pintar(); return; }
