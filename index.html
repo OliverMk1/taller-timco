@@ -872,9 +872,10 @@ function pintarPlan(){
       ${chip("TALLER","En taller",R.t||0)}${chip("ARENA","En arena",R.a||0)}</div>`;
   const futuro = PLAN.f > hoyF || PLAN.py;
   if (PLANES.length > 1)
-    h = `<div class="chips-lienzo">` + PLANES.map(p => `<button type="button" class="chip" data-diaplan="${esc(p.f)}" aria-pressed="${p.f===PLAN.f}">${p.f===hoyF?"Hoy":p.f<hoyF?"Último "+dia(p.f):dia(p.f)}</button>`).join("") + `</div>` + h;
+    h = `<div class="chips-lienzo">` + PLANES.map(p => `<button type="button" class="chip" data-diaplan="${esc(p.f)}" aria-pressed="${p.f===PLAN.f}">${p.f===hoyF?"Hoy":p.hoy?"Último "+dia(p.f):dia(p.f)}</button>`).join("") + `</div>` + h;
   if (PLAN.f) h += `<p class="nota-ace${futuro?" vieja":""}">Plan del ${dia(PLAN.f)}`
-      + (futuro ? " · PROYECTADO: puede cambiar si hay imprevistos" : "") + `</p>`;
+      + (futuro ? " · PROYECTADO: puede cambiar si hay imprevistos"
+                : (PLAN.f < hoyF && !PLAN.hoy ? " · plan pasado: así quedó el avance" : "")) + `</p>`;
   if (nombres.length)
     h += `<div class="chips-lienzo"><button type="button" class="chip" data-tecplan="" aria-pressed="${!tecPlan}">Todos</button>`
        + nombres.map(n => `<button type="button" class="chip" data-tecplan="${esc(n)}" aria-pressed="${mismoTec(n,tecPlan)}">${esc(n)}</button>`).join("") + `</div>`;
