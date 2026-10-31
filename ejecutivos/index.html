@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F3864">
+<meta name="description" content="TIMCO Ejecutivos: estado de cada unidad para responder al cliente. Solo lectura.">
+<link rel="icon" href="../icono-192.png">
+<link rel="apple-touch-icon" href="../icono-192.png">
+<title>TIMCO Ejecutivos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--azul:#1f3a56;--azul2:#2b4d70;--naranja:#e08a00;--fondo:#f3f5f8;--carta:#fff;--linea:#dfe5ec;--texto:#16202b;--suave:#5b6876;
+  --alta:#b3261e;--alta-bg:#fbe5e3;--media:#a15c00;--media-bg:#fdf0dc;--baja:#1f7a4d;--baja-bg:#e3f3ea;--f:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+@media (prefers-color-scheme: dark){:root{--fondo:#11161c;--carta:#1a222b;--linea:#2b3640;--texto:#e7edf3;--suave:#9aa8b6;
+  --alta-bg:#3a1d1b;--media-bg:#3a2c14;--baja-bg:#16302a}}
+*{box-sizing:border-box}html,body{margin:0}
+body{font:15px/1.45 var(--f);background:var(--fondo);color:var(--texto);padding-bottom:40px}
+header{background:var(--azul);color:#fff;padding:14px 16px calc(14px);position:sticky;top:0;z-index:5}
+header .fila{max-width:980px;margin:0 auto;display:flex;align-items:center;gap:12px}
+header h1{font-size:18px;margin:0;font-weight:700}header h1 b{color:#f2a531}
+header .al{margin-left:auto;font-size:12px;color:#c9d6e3;text-align:right}
+main{max-width:980px;margin:0 auto;padding:16px}
+.buscar{display:flex;gap:8px;margin-bottom:12px}
+input[type=search],input[type=password]{flex:1;font:17px var(--f);padding:12px 14px;border:1px solid var(--linea);border-radius:10px;background:var(--carta);color:var(--texto);text-transform:uppercase}
+input[type=password]{text-transform:none}
+button{font:600 15px var(--f);border:0;border-radius:10px;padding:11px 16px;background:var(--azul);color:#fff;cursor:pointer}
+button.sec{background:transparent;color:var(--azul);border:1px solid var(--azul)}
+@media (prefers-color-scheme: dark){button.sec{color:#c9d6e3;border-color:#c9d6e3}}
+button:disabled{opacity:.5}
+.lista{display:grid;gap:8px}
+.res{display:flex;align-items:center;gap:10px;background:var(--carta);border:1px solid var(--linea);border-radius:12px;padding:10px 12px;cursor:pointer;width:100%;text-align:left;color:var(--texto);font-weight:400}
+.plate{font:700 15px ui-monospace,Menlo,Consolas,monospace;border:2px solid var(--texto);border-radius:6px;padding:2px 8px;letter-spacing:.04em;white-space:nowrap}
+.res .info{flex:1;min-width:0}.res small{color:var(--suave);display:block}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.e-taller{background:var(--media-bg);color:var(--media)}.e-prog{background:#e4edf6;color:var(--azul)}.e-pend{background:var(--alta-bg);color:var(--alta)}.e-ok{background:var(--baja-bg);color:var(--baja)}
+@media (prefers-color-scheme: dark){.e-prog{background:#1c2c3d;color:#9cc0e6}}
+.p-A{background:var(--alta-bg);color:var(--alta)}.p-M{background:var(--media-bg);color:var(--media)}.p-B{background:var(--baja-bg);color:var(--baja)}
+.ficha .cab{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:4px 0 14px}
+.ficha .cab .plate{font-size:22px;padding:4px 12px}
+.ficha .cab .t{font-size:15px;color:var(--suave)}
+.bloque{background:var(--carta);border:1px solid var(--linea);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.bloque h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--naranja);margin:0 0 10px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 16px}
+.kv div small{display:block;color:var(--suave);font-size:12px}.kv div b{font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font-size:13px;border:1px solid var(--linea);border-radius:999px;padding:3px 10px;color:var(--texto)}
+.chip.r{border-color:var(--alta);color:var(--alta)}.chip.a{border-color:var(--media);color:var(--media)}
+.grupo{margin-top:10px}.grupo h3{font-size:15px;margin:12px 0 6px;color:var(--azul)}
+@media (prefers-color-scheme: dark){.grupo h3{color:#9cc0e6}}
+.item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--linea)}
+.item:first-of-type{border-top:0}.item .x{flex:1}.item small{color:var(--suave);display:block}
+.vacio{color:var(--suave);padding:6px 0}
+.acciones{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+.puerta{max-width:420px;margin:60px auto;background:var(--carta);border:1px solid var(--linea);border-radius:16px;padding:24px}
+.puerta h2{margin:0 0 6px;color:var(--azul);font-size:20px}
+@media (prefers-color-scheme: dark){.puerta h2{color:#e7edf3}}
+.puerta p{color:var(--suave);margin:0 0 16px}.puerta form{display:flex;flex-direction:column;gap:10px}
+.err{color:var(--alta);min-height:20px;font-size:14px}
+.nota{font-size:12.5px;color:var(--suave);margin-top:8px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#16202b;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:9}
+.mas{margin-top:8px}
+</style>
+</head>
+<body>
+<header><div class="fila"><h1>TIMCO <b>Ejecutivos</b></h1><div class="al" id="al"></div></div></header>
+
+<section class="puerta" id="puerta">
+  <h2>Ingreso de ejecutivos</h2>
+  <p>Escribe la clave que te dio el Área de Mantenimiento.</p>
+  <form id="fPuerta"><input type="password" id="clave" autocomplete="current-password" placeholder="Clave" required>
+  <button id="entrar" type="submit">Entrar</button><div class="err" id="errPuerta" role="alert"></div></form>
+</section>
+
+<main id="app" hidden>
+  <div class="buscar"><input type="search" id="q" placeholder="Buscar placa, p. ej. TMY-996" autocomplete="off" inputmode="text" aria-label="Buscar placa"></div>
+  <div id="vista"></div>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+const RUTA = "datos.json";
+const LLAVE = "timco-ejecutivos";
+const CAT = {MECANICO:"Mecánico",ELECTRICO:"Eléctrico",INFRAESTRUCTURA:"Infraestructura",NEUMATICO:"Neumáticos",PINTURA:"Pintura",
+  ACCESORIO:"Accesorios",IMPLEMENTO:"Implementos",REFRIGERADO:"Refrigeración",PERMISOLOGIA:"Permisos",DOCUMENTOS:"Documentos","":"Otros"};
+const PRIO = {A:"Alta",M:"Media",B:"Baja"};
+const SEM = {VENCIDO:"Vencido",CRITICO:"Por vencer",PROXIMO:"Próximo",EN_RANGO:"Al día",SIN_DATO:"Sin dato"};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+const fecha = iso => iso ? `${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(0,4)}` : "—";
+const cap = s => { s = String(s || "").trim().replace(/\s+/g, " "); return s ? s[0].toUpperCase() + s.slice(1) : s; };
+const leer = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+const anotar = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} };
+const bytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+let D = null, LOGO = null, placa = "", verMas = false;
+let tT; function toast(m){ const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(tT); tT = setTimeout(() => t.hidden = true, 3500); }
+
+async function abrir(sobre, clave){
+  const semilla = await crypto.subtle.importKey("raw", new TextEncoder().encode(clave), "PBKDF2", false, ["deriveKey"]);
+  const k = await crypto.subtle.deriveKey({name:"PBKDF2", salt:bytes(sobre.sal), iterations:sobre.vueltas || 200000, hash:"SHA-256"},
+    semilla, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const claro = await crypto.subtle.decrypt({name:"AES-GCM", iv:bytes(sobre.iv)}, k, bytes(sobre.datos));
+  return JSON.parse(new TextDecoder().decode(claro));
+}
+async function bajar(){ const r = await fetch(RUTA + "?t=" + Date.now(), {cache:"no-store"}); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+async function entrar(clave, recordar){
+  const sobre = await bajar();
+  D = await abrir(sobre, clave);
+  if (recordar) anotar(LLAVE, clave);
+  $("puerta").hidden = true; $("app").hidden = false;
+  $("al").textContent = "Datos al " + fecha(D.generado.slice(0,10)) + " " + D.generado.slice(11,16);
+  cargarLogo();
+  const h = decodeURIComponent(location.hash.slice(1) || "");
+  if (h) { placa = h; $("q").value = h; }
+  pintar();
+}
+$("fPuerta").onsubmit = async e => {
+  e.preventDefault(); $("errPuerta").textContent = ""; $("entrar").disabled = true;
+  try { await entrar($("clave").value.trim(), true); }
+  catch(err){ $("errPuerta").textContent = /HTTP|fetch|Failed/i.test(String(err)) ? "Sin conexión. Inténtalo otra vez." : "Clave incorrecta."; }
+  $("entrar").disabled = false;
+};
+(async () => { const c = leer(LLAVE); if (c) { try { await entrar(c, false); } catch(e){ /* se queda en la puerta */ } } })();
+
+async function cargarLogo(){
+  try { const r = await fetch("logo.png"); if (!r.ok) return; const b = await r.blob();
+    LOGO = await new Promise(ok => { const f = new FileReader(); f.onload = () => ok(f.result); f.readAsDataURL(b); }); } catch(e){}
+}
+
+// ---------- lo que se sabe de una placa ----------
+function datosDe(p){
+  const u = D.flota.find(x => x.p === p) || {p, t: "", y: ""};
+  const pend = D.pend.filter(x => x.u === p).sort((a, b) => "AMB".indexOf(a.pr) - "AMB".indexOf(b.pr) || (a.d < b.d ? -1 : 1));
+  const hist = D.hist.filter(x => x.u === p);
+  const ords = D.ordenes.filter(o => o.p === p);
+  const enTaller = ords.some(o => o.e === "EN_TALLER") || !!(D.taller || {})[p];
+  const estado = enTaller ? ["taller", "En taller"] : ords.length ? ["prog", "Con orden programada"] : pend.length ? ["prog", "Con trabajos programados"] : ["ok", "Al día"];
+  return {u, pend, hist, ords, estado, ck: (D.ck || {})[p], al: (D.al || {})[p] || [], ac: (D.ac || {})[p]};
+}
+const tipo = u => (u.t === "C" ? "Carreta" : u.t === "T" ? "Tracto" : "Unidad") + (u.y ? " · " + u.y : "");
+function porCat(lista){ const m = new Map(); for (const x of lista){ const c = x.c || ""; if (!m.has(c)) m.set(c, []); m.get(c).push(x); } return m; }
+
+// ---------- pantallas ----------
+function pintar(){
+  const v = $("vista"), q = norm($("q").value);
+  if (placa && norm(placa) === q) return pintarFicha(v);
+  placa = "";
+  if (!q){ v.innerHTML = `<div class="bloque"><h2>Buscar una unidad</h2><p class="vacio">Escribe la placa que te consultó el cliente. Verás su estado, el último checklist, los trabajos realizados y los pendientes, y podrás descargar la Orden de Servicio o el informe en PDF.</p><p class="nota">${D.flota.length} unidades · pendientes de los últimos ${D.dias_pend} días.</p></div>`; return; }
+  const hits = D.flota.filter(u => norm(u.p).includes(q)).slice(0, 30);
+  if (!hits.length){ v.innerHTML = `<p class="vacio">No hay ninguna placa con «${esc($("q").value)}».</p>`; return; }
+  if (hits.length === 1 && norm(hits[0].p) === q){ placa = hits[0].p; return pintarFicha(v); }
+  v.innerHTML = `<div class="lista">` + hits.map(u => { const d = datosDe(u.p);
+    return `<button class="res" data-p="${esc(u.p)}"><span class="plate">${esc(u.p)}</span><span class="info">${esc(tipo(u))}<small>${d.pend.length} pendiente(s)</small></span><span class="pill e-${d.estado[0]}">${d.estado[1]}</span></button>`; }).join("") + `</div>`;
+}
+function pintarFicha(v){
+  const d = datosDe(placa), u = d.u;
+  location.hash = encodeURIComponent(placa);
+  let h = `<div class="ficha"><div class="cab"><span class="plate">${esc(placa)}</span><span class="t">${esc(tipo(u))}</span><span class="pill e-${d.estado[0]}">${d.estado[1]}</span></div>`;
+  h += `<div class="acciones"><button id="pdfOS">Orden de Servicio (PDF)</button><button class="sec" id="pdfInf">Informe de la unidad (PDF)</button></div>`;
+  // Estado
+  h += `<div class="bloque"><h2>Estado hoy</h2>`;
+  if (d.ords.length) h += d.ords.map(o => `<div class="item"><div class="x"><b>${esc(o.k)}</b> · ${esc(CAT[o.c] || o.c)}<small>Emitida el ${fecha(o.fe)} · ${o.h} de ${o.t} trabajo(s) realizados</small></div><span class="pill e-${o.e === "EN_TALLER" ? "taller" : "prog"}">${o.e === "EN_TALLER" ? "En taller" : "Programada"}</span></div>`).join("");
+  else h += `<p class="vacio">${d.estado[0] === "ok" ? "La unidad no tiene trabajos pendientes." : "Sin orden abierta en este momento; sus pendientes están programados para su próxima entrada al taller."}</p>`;
+  h += `</div>`;
+  // Checklist
+  h += `<div class="bloque"><h2>Último checklist del conductor</h2>`;
+  if (d.ck) h += `<div class="kv"><div><small>Fecha</small><b>${fecha(d.ck.f)}</b></div><div><small>Código</small><b>${esc(d.ck.g || "—")}</b></div>${d.ck.e ? `<div><small>Iba con</small><b>${esc(d.ck.e)}</b></div>` : ""}${d.ck.km ? `<div><small>Kilometraje</small><b>${Number(d.ck.km).toLocaleString("es-PE")} km</b></div>` : ""}</div>`
+    + (d.al.length ? `<div class="chips">` + d.al.map(a => `<span class="chip ${a[3]}">${esc(a[0])}: ${esc(a[1])}${a[2] ? " · " + esc(a[2]) : ""}</span>`).join("") + `</div>` : `<p class="nota">El conductor no marcó observaciones en su último checklist.</p>`);
+  else h += `<p class="vacio">No hay checklist registrado de esta unidad.</p>`;
+  h += `</div>`;
+  // Pendientes
+  h += `<div class="bloque"><h2>Trabajos programados (${d.pend.length})</h2>`;
+  if (!d.pend.length) h += `<p class="vacio">Sin trabajos pendientes en los últimos ${D.dias_pend} días.</p>`;
+  for (const [c, xs] of porCat(d.pend)) h += `<div class="grupo"><h3>${esc(CAT[c] || c)} · ${xs.length}</h3>` + xs.map(x => `<div class="item"><div class="x">${esc(cap(x.x))}<small>Reportado el ${fecha(x.d)}${x.o ? " · en " + esc(x.o) : ""}</small></div><span class="pill p-${x.pr}">${PRIO[x.pr]}</span></div>`).join("") + `</div>`;
+  h += `</div>`;
+  // Hecho
+  const hs = verMas ? d.hist : d.hist.slice(0, 10);
+  h += `<div class="bloque"><h2>Trabajos realizados (${d.hist.length})</h2>`;
+  h += hs.length ? hs.map(x => `<div class="item"><div class="x">${esc(cap(x.x))}<small>${fecha(x.f)} · ${esc(CAT[x.c] || x.c)}${x.o ? " · " + esc(x.o) : ""}</small></div></div>`).join("") : `<p class="vacio">Sin trabajos registrados en los últimos meses.</p>`;
+  if (d.hist.length > 10) h += `<button class="sec mas" id="verMas">${verMas ? "Ver menos" : "Ver los " + d.hist.length}</button>`;
+  h += `</div>`;
+  // Aceite
+  if (d.ac) h += `<div class="bloque"><h2>Cambio de aceite</h2><div class="kv"><div><small>Estado</small><b>${esc(SEM[d.ac.s] || d.ac.s || "—")}</b></div><div><small>Último cambio</small><b>${fecha(d.ac.uf)}</b></div>${d.ac.op ? `<div><small>Operación</small><b>${esc(d.ac.op)}</b></div>` : ""}</div></div>`;
+  h += `<button class="sec" id="volver">← Buscar otra placa</button></div>`;
+  v.innerHTML = h;
+  $("pdfOS").onclick = () => pdfOrden(placa);
+  $("pdfInf").onclick = () => pdfInforme(placa);
+  $("volver").onclick = () => { placa = ""; verMas = false; $("q").value = ""; history.replaceState(null, "", location.pathname); pintar(); $("q").focus(); };
+  const vm = $("verMas"); if (vm) vm.onclick = () => { verMas = !verMas; pintar(); };
+}
+$("q").addEventListener("input", () => { verMas = false; pintar(); });
+$("vista").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b){ placa = b.dataset.p; $("q").value = placa; pintar(); scrollTo(0, 0); } });
+
+// ---------- PDF ----------
+// Nombre: «Orden de Servicio_TMY-996_1026», y _2, _3 si se saca otra vez en el mismo mes.
+function nombrePDF(base, p){
+  const h = new Date(), mmaa = String(h.getMonth() + 1).padStart(2, "0") + String(h.getFullYear()).slice(2);
+  const k = `${LLAVE}-n:${base}:${p}:${mmaa}`, n = Number(leer(k) || 0) + 1; anotar(k, String(n));
+  return `${base}_${p}_${mmaa}${n > 1 ? "_" + n : ""}.pdf`;
+}
+function hoyTxt(){ const h = new Date(); return `${String(h.getDate()).padStart(2,"0")}/${String(h.getMonth()+1).padStart(2,"0")}/${h.getFullYear()}`; }
+function cabecera(doc, titulo, sub, p, d){
+  const W = doc.internal.pageSize.getWidth();
+  doc.setDrawColor(31, 58, 86); doc.setLineWidth(0.4); doc.rect(12, 12, W - 24, 28);
+  if (LOGO) { try { doc.addImage(LOGO, "PNG", 15, 15, 36, 18); } catch(e){} }
+  doc.setFont("helvetica", "bold"); doc.setFontSize(15); doc.setTextColor(31, 58, 86); doc.text(titulo, W / 2, 23, {align: "center"});
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(91, 104, 118); doc.text(sub, W / 2, 29, {align: "center"});
+  doc.setFontSize(9); doc.setTextColor(22, 32, 43);
+  doc.text(`Fecha: ${hoyTxt()}`, W - 15, 19, {align: "right"});
+  doc.text(`Placa: ${p}`, W - 15, 25, {align: "right"});
+  doc.text(tipo(d.u), W - 15, 31, {align: "right"});
+  doc.text(d.estado[1], W - 15, 37, {align: "right"});
+  return 48;
+}
+function pie(doc){
+  const n = doc.getNumberOfPages(), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+  for (let i = 1; i <= n; i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(138, 150, 163);
+    doc.text("TIMCO SAC · Área de Mantenimiento de Flota", 12, H - 8); doc.text(`Página ${i} de ${n}`, W - 12, H - 8, {align: "right"}); }
+}
+function nuevoPDF(){
+  if (!window.jspdf) { toast("No se pudo cargar el generador de PDF. Revisa la conexión."); return null; }
+  return new window.jspdf.jsPDF({unit: "mm", format: "a4"});
+}
+function seccion(doc, y, texto){
+  if (y > 260) { doc.addPage(); y = 18; }
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(224, 138, 0); doc.text(texto.toUpperCase(), 12, y);
+  doc.setTextColor(22, 32, 43); doc.setFont("helvetica", "normal"); return y + 3;
+}
+const estilo = {theme: "grid", styles: {fontSize: 9, cellPadding: 2, textColor: [22, 32, 43], lineColor: [210, 218, 226]},
+  headStyles: {fillColor: [31, 58, 86], textColor: 255, fontStyle: "bold"}, margin: {left: 12, right: 12}};
+function pdfOrden(p){
+  const doc = nuevoPDF(); if (!doc) return;
+  const d = datosDe(p);
+  let y = cabecera(doc, "ORDEN DE SERVICIO", "Programación de atención", p, d);
+  doc.setFontSize(9.5);
+  doc.text(d.ck ? `Último checklist del conductor: ${fecha(d.ck.f)} (código ${d.ck.g || "—"})` : "Sin checklist registrado.", 12, y); y += 7;
+  if (!d.pend.length){ doc.text(`La unidad no tiene trabajos pendientes en los últimos ${D.dias_pend} días.`, 12, y); y += 8; }
+  for (const [c, xs] of porCat(d.pend)){
+    y = seccion(doc, y + 3, `${CAT[c] || c} · ${xs.length} trabajo(s)`);
+    doc.autoTable({...estilo, startY: y, head: [["N°", "Trabajo programado", "Prioridad", "Reportado"]],
+      body: xs.map((x, i) => [String(i + 1), cap(x.x), PRIO[x.pr], fecha(x.d)]),
+      columnStyles: {0: {cellWidth: 10, halign: "center"}, 2: {cellWidth: 22, halign: "center"}, 3: {cellWidth: 24, halign: "center"}}});
+    y = doc.lastAutoTable.finalY + 4;
+  }
+  if (y > 235) { doc.addPage(); y = 20; }
+  y = seccion(doc, y + 4, "Observaciones");
+  doc.setDrawColor(200, 208, 216); for (let i = 0; i < 3; i++) doc.line(12, y + 7 + i * 7, 198, y + 7 + i * 7);
+  y += 40;
+  doc.setDrawColor(91, 104, 118); doc.line(25, y, 85, y); doc.line(125, y, 185, y);
+  doc.setFontSize(9); doc.text("Jefatura de Mantenimiento", 55, y + 5, {align: "center"}); doc.text("Supervisión de taller", 155, y + 5, {align: "center"});
+  pie(doc); doc.save(nombrePDF("Orden de Servicio", p));
+  toast("Orden de Servicio descargada.");
+}
+function pdfInforme(p){
+  const doc = nuevoPDF(); if (!doc) return;
+  const d = datosDe(p);
+  let y = cabecera(doc, "INFORME DE LA UNIDAD", "Estado, checklist y trazabilidad de trabajos", p, d);
+  y = seccion(doc, y, "Último checklist del conductor");
+  doc.setFontSize(9.5);
+  doc.text(d.ck ? `${fecha(d.ck.f)} · código ${d.ck.g || "—"}${d.ck.e ? " · iba con " + d.ck.e : ""}` : "Sin checklist registrado.", 12, y + 4); y += 8;
+  if (d.al.length){ doc.autoTable({...estilo, startY: y, head: [["Tema", "Observación del conductor"]], body: d.al.map(a => [a[0], `${a[1]}${a[2] ? " · " + a[2] : ""}`])}); y = doc.lastAutoTable.finalY + 6; }
+  y = seccion(doc, y + 2, `Trabajos programados (${d.pend.length})`);
+  if (d.pend.length){ doc.autoTable({...estilo, startY: y, head: [["Especialidad", "Trabajo", "Prioridad", "Reportado"]],
+      body: d.pend.map(x => [CAT[x.c] || x.c, cap(x.x), PRIO[x.pr], fecha(x.d)]), columnStyles: {0: {cellWidth: 30}, 2: {cellWidth: 20}, 3: {cellWidth: 24}}}); y = doc.lastAutoTable.finalY + 6; }
+  else { doc.text("Sin trabajos pendientes.", 12, y + 4); y += 10; }
+  y = seccion(doc, y + 2, `Trabajos realizados (${Math.min(d.hist.length, 40)})`);
+  if (d.hist.length){ doc.autoTable({...estilo, startY: y, head: [["Fecha", "Especialidad", "Trabajo realizado", "Orden"]],
+      body: d.hist.slice(0, 40).map(x => [fecha(x.f), CAT[x.c] || x.c, cap(x.x), x.o || "—"]), columnStyles: {0: {cellWidth: 22}, 1: {cellWidth: 30}, 3: {cellWidth: 30}}}); y = doc.lastAutoTable.finalY + 6; }
+  else { doc.text("Sin trabajos registrados en los últimos meses.", 12, y + 4); y += 10; }
+  if (d.ac){ y = seccion(doc, y + 2, "Cambio de aceite"); doc.setFontSize(9.5);
+    doc.text(`Estado: ${SEM[d.ac.s] || d.ac.s || "—"} · Último cambio: ${fecha(d.ac.uf)}`, 12, y + 4); }
+  pie(doc); doc.save(nombrePDF("Informe", p));
+  toast("Informe descargado.");
+}
+</script>
+</body>
+</html>
