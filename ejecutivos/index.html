@@ -61,6 +61,7 @@ button:disabled{opacity:.5}
 .nota{font-size:12.5px;color:var(--suave);margin-top:8px}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#16202b;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:9}
 .mas{margin-top:8px}
+.op{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--suave);margin:0 0 6px;cursor:pointer}.op input{width:18px;height:18px}
 </style>
 </head>
 <body>
@@ -86,7 +87,7 @@ const LLAVE = "timco-ejecutivos";
 const CAT = {MECANICO:"Mecánico",ELECTRICO:"Eléctrico",INFRAESTRUCTURA:"Infraestructura",NEUMATICO:"Neumáticos",PINTURA:"Pintura",
   ACCESORIO:"Accesorios",IMPLEMENTO:"Implementos",REFRIGERADO:"Refrigeración",PERMISOLOGIA:"Permisos",DOCUMENTOS:"Documentos","":"Otros"};
 const PRIO = {A:"Alta",M:"Media",B:"Baja"};
-const SEM = {VENCIDO:"Vencido",CRITICO:"Por vencer",PROXIMO:"Próximo",EN_RANGO:"Al día",SIN_DATO:"Sin dato"};
+const SEM = {VENCIDO:"Vencido",CRITICO:"Por vencer",PROXIMO:"Próximo",OK:"Al día",EN_RANGO:"Al día",SIN_DATO:"Sin dato","SIN DATO":"Sin dato",INOPERATIVA:"Unidad inoperativa"};
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm = s => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -95,7 +96,7 @@ const cap = s => { s = String(s || "").trim().replace(/\s+/g, " "); return s ? s
 const leer = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
 const anotar = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} };
 const bytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-let D = null, LOGO = null, placa = "", verMas = false;
+let D = null, LOGO = null, placa = "", verMas = false, antiguos = false;
 let tT; function toast(m){ const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(tT); tT = setTimeout(() => t.hidden = true, 3500); }
 
 async function abrir(sobre, clave){
@@ -133,12 +134,34 @@ async function cargarLogo(){
 // ---------- lo que se sabe de una placa ----------
 function datosDe(p){
   const u = D.flota.find(x => x.p === p) || {p, t: "", y: ""};
-  const pend = D.pend.filter(x => x.u === p).sort((a, b) => "AMB".indexOf(a.pr) - "AMB".indexOf(b.pr) || (a.d < b.d ? -1 : 1));
+  // Por defecto, los pendientes de los ultimos D.dias_pend dias; los mas
+  // antiguos solo si el ejecutivo marca «Incluir los de mas de 90 dias».
+  const todos = D.pend.filter(x => x.u === p);
+  const viejos = todos.filter(x => edad(x.d) > D.dias_pend).length;
+  const pend = todos.filter(x => antiguos || edad(x.d) <= D.dias_pend)
+    .sort((a, b) => "AMB".indexOf(a.pr) - "AMB".indexOf(b.pr) || (a.d < b.d ? -1 : 1));
   const hist = D.hist.filter(x => x.u === p);
   const ords = D.ordenes.filter(o => o.p === p);
   const enTaller = ords.some(o => o.e === "EN_TALLER") || !!(D.taller || {})[p];
   const estado = enTaller ? ["taller", "En taller"] : ords.length ? ["prog", "Con orden programada"] : pend.length ? ["prog", "Con trabajos programados"] : ["ok", "Al día"];
-  return {u, pend, hist, ords, estado, ck: (D.ck || {})[p], al: (D.al || {})[p] || [], ac: (D.ac || {})[p]};
+  return {u, pend, viejos, hist, ords, estado, ck: (D.ck || {})[p], al: (D.al || {})[p] || [], ac: (D.ac || {})[p]};
+}
+function edad(iso){ const a = Date.parse(String(D.generado).slice(0, 10)), b = Date.parse(String(iso || "").slice(0, 10)); return isNaN(a) || isNaN(b) ? 0 : Math.round((a - b) / 864e5); }
+const km = n => Math.round(Math.abs(Number(n))).toLocaleString("es-PE");
+// El proximo preventivo (cambio de aceite de motor), sacado del status de aceite.
+function preventivo(ac){
+  // Sin dato o unidad inoperativa: no hay fecha que dar, el bloque no sale.
+  if (!ac || !ac.s || /SIN.DATO|INOPERATIVA/.test(ac.s)) return null;
+  const r = Number(ac.rk), hoy = String(D.generado).slice(0, 10);
+  const ya = ac.s === "VENCIDO" || (ac.rk != null && r <= 0);
+  const pronto = !ya && (ac.s === "CRITICO" || (ac.py && ac.py <= hoy));
+  return {
+    estado: SEM[ac.s] || ac.s,
+    ultimo: fecha(ac.uf),
+    cuando: ya ? "Le corresponde ya" : pronto ? "En estos días" : (ac.py ? "Aprox. " + fecha(ac.py) : "—"),
+    faltan: ya ? "—" : (ac.rk != null ? km(r) + " km" : "—"),
+    cada: ac.f ? "Cada " + km(ac.f) + " km" : "—"
+  };
 }
 const tipo = u => (u.t === "C" ? "Carreta" : u.t === "T" ? "Tracto" : "Unidad") + (u.y ? " · " + u.y : "");
 function porCat(lista){ const m = new Map(); for (const x of lista){ const c = x.c || ""; if (!m.has(c)) m.set(c, []); m.get(c).push(x); } return m; }
@@ -148,7 +171,7 @@ function pintar(){
   const v = $("vista"), q = norm($("q").value);
   if (placa && norm(placa) === q) return pintarFicha(v);
   placa = "";
-  if (!q){ v.innerHTML = `<div class="bloque"><h2>Buscar una unidad</h2><p class="vacio">Escribe la placa que te consultó el cliente. Verás su estado, el último checklist, los trabajos realizados y los pendientes, y podrás descargar la Orden de Servicio o el informe en PDF.</p><p class="nota">${D.flota.length} unidades · pendientes de los últimos ${D.dias_pend} días.</p></div>`; return; }
+  if (!q){ v.innerHTML = `<div class="bloque"><h2>Buscar una unidad</h2><p class="vacio">Escribe la placa que te consultó el cliente. Verás su estado, el último checklist, los trabajos realizados y los pendientes, y podrás descargar la Orden de Servicio o el informe en PDF.</p><p class="nota">${D.flota.length} unidades · se muestran los pendientes de los últimos ${D.dias_pend} días; en cada ficha puedes incluir los anteriores.</p></div>`; return; }
   const hits = D.flota.filter(u => norm(u.p).includes(q)).slice(0, 30);
   if (!hits.length){ v.innerHTML = `<p class="vacio">No hay ninguna placa con «${esc($("q").value)}».</p>`; return; }
   if (hits.length === 1 && norm(hits[0].p) === q){ placa = hits[0].p; return pintarFicha(v); }
@@ -165,6 +188,9 @@ function pintarFicha(v){
   if (d.ords.length) h += d.ords.map(o => `<div class="item"><div class="x"><b>${esc(o.k)}</b> · ${esc(CAT[o.c] || o.c)}<small>Emitida el ${fecha(o.fe)} · ${o.h} de ${o.t} trabajo(s) realizados</small></div><span class="pill e-${o.e === "EN_TALLER" ? "taller" : "prog"}">${o.e === "EN_TALLER" ? "En taller" : "Programada"}</span></div>`).join("");
   else h += `<p class="vacio">${d.estado[0] === "ok" ? "La unidad no tiene trabajos pendientes." : "Sin orden abierta en este momento; sus pendientes están programados para su próxima entrada al taller."}</p>`;
   h += `</div>`;
+  // Proximo preventivo
+  const pv = preventivo(d.ac);
+  if (pv) h += `<div class="bloque"><h2>Próximo preventivo · cambio de aceite</h2><div class="kv"><div><small>Le toca</small><b>${esc(pv.cuando)}</b></div><div><small>Faltan</small><b>${esc(pv.faltan)}</b></div><div><small>Último cambio</small><b>${pv.ultimo}</b></div><div><small>Frecuencia</small><b>${esc(pv.cada)}</b></div><div><small>Estado</small><b>${esc(pv.estado)}</b></div>${d.ac.op ? `<div><small>Operación</small><b>${esc(d.ac.op)}</b></div>` : ""}</div><p class="nota">Fecha estimada con el recorrido de las últimas semanas; puede moverse unos días.</p></div>`;
   // Checklist
   h += `<div class="bloque"><h2>Último checklist del conductor</h2>`;
   if (d.ck) h += `<div class="kv"><div><small>Fecha</small><b>${fecha(d.ck.f)}</b></div><div><small>Código</small><b>${esc(d.ck.g || "—")}</b></div>${d.ck.e ? `<div><small>Iba con</small><b>${esc(d.ck.e)}</b></div>` : ""}${d.ck.km ? `<div><small>Kilometraje</small><b>${Number(d.ck.km).toLocaleString("es-PE")} km</b></div>` : ""}</div>`
@@ -173,7 +199,8 @@ function pintarFicha(v){
   h += `</div>`;
   // Pendientes
   h += `<div class="bloque"><h2>Trabajos programados (${d.pend.length})</h2>`;
-  if (!d.pend.length) h += `<p class="vacio">Sin trabajos pendientes en los últimos ${D.dias_pend} días.</p>`;
+  if (d.viejos) h += `<label class="op"><input type="checkbox" id="antiguos" ${antiguos ? "checked" : ""}> Incluir los de más de ${D.dias_pend} días (${d.viejos})</label>`;
+  if (!d.pend.length) h += `<p class="vacio">Sin trabajos pendientes${antiguos ? "" : ` en los últimos ${D.dias_pend} días`}.</p>`;
   for (const [c, xs] of porCat(d.pend)) h += `<div class="grupo"><h3>${esc(CAT[c] || c)} · ${xs.length}</h3>` + xs.map(x => `<div class="item"><div class="x">${esc(cap(x.x))}<small>Reportado el ${fecha(x.d)}${x.o ? " · en " + esc(x.o) : ""}</small></div><span class="pill p-${x.pr}">${PRIO[x.pr]}</span></div>`).join("") + `</div>`;
   h += `</div>`;
   // Hecho
@@ -183,13 +210,13 @@ function pintarFicha(v){
   if (d.hist.length > 10) h += `<button class="sec mas" id="verMas">${verMas ? "Ver menos" : "Ver los " + d.hist.length}</button>`;
   h += `</div>`;
   // Aceite
-  if (d.ac) h += `<div class="bloque"><h2>Cambio de aceite</h2><div class="kv"><div><small>Estado</small><b>${esc(SEM[d.ac.s] || d.ac.s || "—")}</b></div><div><small>Último cambio</small><b>${fecha(d.ac.uf)}</b></div>${d.ac.op ? `<div><small>Operación</small><b>${esc(d.ac.op)}</b></div>` : ""}</div></div>`;
   h += `<button class="sec" id="volver">← Buscar otra placa</button></div>`;
   v.innerHTML = h;
   $("pdfOS").onclick = () => pdfOrden(placa);
   $("pdfInf").onclick = () => pdfInforme(placa);
   $("volver").onclick = () => { placa = ""; verMas = false; $("q").value = ""; history.replaceState(null, "", location.pathname); pintar(); $("q").focus(); };
   const vm = $("verMas"); if (vm) vm.onclick = () => { verMas = !verMas; pintar(); };
+  const an = $("antiguos"); if (an) an.onchange = () => { antiguos = an.checked; pintar(); };
 }
 $("q").addEventListener("input", () => { verMas = false; pintar(); });
 $("vista").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b){ placa = b.dataset.p; $("q").value = placa; pintar(); scrollTo(0, 0); } });
@@ -237,13 +264,22 @@ function pdfOrden(p){
   let y = cabecera(doc, "ORDEN DE SERVICIO", "Programación de atención", p, d);
   doc.setFontSize(9.5);
   doc.text(d.ck ? `Último checklist del conductor: ${fecha(d.ck.f)} (código ${d.ck.g || "—"})` : "Sin checklist registrado.", 12, y); y += 7;
-  if (!d.pend.length){ doc.text(`La unidad no tiene trabajos pendientes en los últimos ${D.dias_pend} días.`, 12, y); y += 8; }
+  if (!d.pend.length){ doc.text(`La unidad no tiene trabajos pendientes${antiguos ? "" : ` en los últimos ${D.dias_pend} días`}.`, 12, y); y += 8; }
   for (const [c, xs] of porCat(d.pend)){
     y = seccion(doc, y + 3, `${CAT[c] || c} · ${xs.length} trabajo(s)`);
     doc.autoTable({...estilo, startY: y, head: [["N°", "Trabajo programado", "Prioridad", "Reportado"]],
       body: xs.map((x, i) => [String(i + 1), cap(x.x), PRIO[x.pr], fecha(x.d)]),
       columnStyles: {0: {cellWidth: 10, halign: "center"}, 2: {cellWidth: 22, halign: "center"}, 3: {cellWidth: 24, halign: "center"}}});
     y = doc.lastAutoTable.finalY + 4;
+  }
+  const pv = preventivo(d.ac);
+  if (pv){
+    if (y > 240) { doc.addPage(); y = 20; }
+    y = seccion(doc, y + 4, "Próximo preventivo · cambio de aceite de motor");
+    doc.autoTable({...estilo, startY: y, head: [["Le toca", "Faltan", "Último cambio", "Frecuencia"]],
+      body: [[pv.cuando, pv.faltan, pv.ultimo, pv.cada]], columnStyles: {0: {halign: "center"}, 1: {halign: "center"}, 2: {halign: "center"}, 3: {halign: "center"}}});
+    y = doc.lastAutoTable.finalY + 4; doc.setFontSize(8.5); doc.setTextColor(91, 104, 118);
+    doc.text("Fecha estimada con el recorrido de las últimas semanas; puede moverse unos días.", 12, y + 1); doc.setTextColor(22, 32, 43); y += 3;
   }
   if (y > 235) { doc.addPage(); y = 20; }
   y = seccion(doc, y + 4, "Observaciones");
@@ -258,6 +294,10 @@ function pdfInforme(p){
   const doc = nuevoPDF(); if (!doc) return;
   const d = datosDe(p);
   let y = cabecera(doc, "INFORME DE LA UNIDAD", "Estado, checklist y trazabilidad de trabajos", p, d);
+  const pv = preventivo(d.ac);
+  if (pv){ y = seccion(doc, y, "Próximo preventivo · cambio de aceite de motor");
+    doc.autoTable({...estilo, startY: y, head: [["Le toca", "Faltan", "Último cambio", "Frecuencia", "Estado"]],
+      body: [[pv.cuando, pv.faltan, pv.ultimo, pv.cada, pv.estado]]}); y = doc.lastAutoTable.finalY + 8; }
   y = seccion(doc, y, "Último checklist del conductor");
   doc.setFontSize(9.5);
   doc.text(d.ck ? `${fecha(d.ck.f)} · código ${d.ck.g || "—"}${d.ck.e ? " · iba con " + d.ck.e : ""}` : "Sin checklist registrado.", 12, y + 4); y += 8;
@@ -270,8 +310,6 @@ function pdfInforme(p){
   if (d.hist.length){ doc.autoTable({...estilo, startY: y, head: [["Fecha", "Especialidad", "Trabajo realizado", "Orden"]],
       body: d.hist.slice(0, 40).map(x => [fecha(x.f), CAT[x.c] || x.c, cap(x.x), x.o || "—"]), columnStyles: {0: {cellWidth: 22}, 1: {cellWidth: 30}, 3: {cellWidth: 30}}}); y = doc.lastAutoTable.finalY + 6; }
   else { doc.text("Sin trabajos registrados en los últimos meses.", 12, y + 4); y += 10; }
-  if (d.ac){ y = seccion(doc, y + 2, "Cambio de aceite"); doc.setFontSize(9.5);
-    doc.text(`Estado: ${SEM[d.ac.s] || d.ac.s || "—"} · Último cambio: ${fecha(d.ac.uf)}`, 12, y + 4); }
   pie(doc); doc.save(nombrePDF("Informe", p));
   toast("Informe descargado.");
 }
