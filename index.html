@@ -235,6 +235,8 @@ h2.seccion{font-family:var(--cond);font-weight:600;font-size:13px;letter-spacing
 .estado.gen{background:var(--acento-sup);color:var(--acento)}
 .estado.tal{background:rgba(174,106,18,.14);color:var(--c8)}
 .ometa{font-size:12.5px;color:var(--suave);margin-top:4px}
+.opdf{margin-top:9px;font:600 13px var(--cuerpo,inherit);padding:8px 12px;border-radius:8px;border:1px solid var(--linea);background:var(--sup2);color:var(--tinta);cursor:pointer}
+.ocel{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--sup2);color:var(--suave)}
 .progreso{height:5px;border-radius:3px;background:var(--sup2);margin-top:9px;overflow:hidden}
 .progreso i{display:block;height:100%;background:var(--ok);border-radius:3px}
 
@@ -338,6 +340,75 @@ nav svg{width:21px;height:21px}
 #cinta{position:sticky;z-index:18;top:calc(env(safe-area-inset-top,0px) + 92px);
   background:var(--c8);color:#fff;font-size:12px;padding:6px 14px;text-align:center}
 #cinta[hidden]{display:none!important}
+
+/* ---------- Inicio y navegación (rediseño del 19-10-2026) ----------
+   Abre en «Inicio»: lo del día de un vistazo, y cada cosa se toca para ir a
+   su lista. Los datos son los mismos de siempre; solo cambia cómo se llega. */
+nav button[hidden]{display:none!important}
+.saludo{margin:2px 0 14px}
+.saludo h2{margin:0;font-family:var(--cond);font-weight:700;font-size:24px;
+  letter-spacing:.02em}
+.saludo h2::first-letter{text-transform:uppercase}
+.saludo p{margin:2px 0 0;font-size:13px;color:var(--suave)}
+.tile.ir{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%;
+  -webkit-tap-highlight-color:transparent;transition:transform .12s,box-shadow .12s}
+.tile.ir:active{transform:scale(.97)}
+.tile.ir span::after{content:" ›";opacity:.55}
+.inicio-tiles{grid-template-columns:repeat(2,1fr)}
+@media (min-width:760px){.inicio-tiles{grid-template-columns:repeat(4,1fr)}}
+.secc-ir{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.secc-ir button{background:none;border:0;color:var(--acento);font-size:13px;font-weight:600;
+  padding:4px 0}
+.urg{display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;font:inherit;
+  color:inherit;background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  padding:10px 12px;margin-bottom:8px;box-shadow:var(--sombra);cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.urg:active{transform:scale(.99)}
+.urg .uk{flex:none;min-width:30px;text-align:center;font-family:var(--cond);font-weight:700;
+  font-size:20px;line-height:1.1;border-radius:7px;padding:3px 4px;color:#fff}
+.urg .ucuerpo{min-width:0;flex:1}
+.urg .ulin{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.urg .placa{font-size:17px}
+.urg .ux{font-size:13.5px;overflow-wrap:anywhere;margin-top:2px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.urg .um{font-size:11.5px;color:var(--suave);margin-top:3px;font-variant-numeric:tabular-nums}
+.fila-ir{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;
+  color:inherit;background:var(--sup);border:1px solid var(--linea);border-radius:var(--r);
+  padding:11px 12px;margin-bottom:8px;box-shadow:var(--sombra);cursor:pointer}
+.fila-ir b{font-family:var(--cond);font-size:22px;font-variant-numeric:tabular-nums}
+.fila-ir span{font-size:13.5px}
+.fila-ir em{margin-left:auto;font-style:normal;color:var(--acento);font-weight:600;font-size:13px}
+.fila-ir .sub{display:block;font-size:11.5px;color:var(--suave);margin-top:1px}
+
+/* Al cambiar de pantalla el contenido entra suave: se nota que cambió. */
+#lienzo.entra{animation:entra .2s ease-out}
+@keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.trabajos{animation:entra .16s ease-out}
+
+/* En el teléfono caben cinco botones abajo: Inicio, Pendientes, Órdenes,
+   Plan y «Más». Lo demás va en «Más». En la PC (menú al costado) entran todos. */
+@media (min-width:760px){
+  #lienzo > .urg, #lienzo > .fila-ir{grid-column:auto;margin-bottom:0}
+}
+@media (max-width:1023px){ nav button.extra{display:none!important} }
+@media (min-width:1024px){ nav button[data-mas]{display:none!important} }
+#hojamas[hidden]{display:none!important}
+#hojamas{position:fixed;inset:0;z-index:40}
+#hojamas .fondo{position:absolute;inset:0;background:rgba(10,14,20,.45);animation:aparece .15s}
+#hojamas .panel{position:absolute;left:0;right:0;bottom:0;background:var(--sup);
+  border-radius:16px 16px 0 0;padding:10px 14px calc(16px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -6px 24px rgba(0,0,0,.18);animation:sube .2s ease-out}
+#hojamas .asa{width:38px;height:4px;border-radius:3px;background:var(--linea);margin:2px auto 10px}
+#hojamas button.opc{display:flex;align-items:center;gap:13px;width:100%;background:none;border:0;
+  padding:13px 8px;border-radius:10px;font-size:15.5px;text-align:left}
+#hojamas button.opc:active{background:var(--sup2)}
+#hojamas button.opc svg{width:22px;height:22px;color:var(--acento);flex:none}
+#hojamas button.opc .n{margin-left:auto;font-size:12.5px;color:var(--suave)}
+@keyframes sube{from{transform:translateY(100%)}to{transform:none}}
+@keyframes aparece{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  #lienzo.entra,.trabajos,#hojamas .panel,#hojamas .fondo{animation:none}
+}
 </style>
 </head>
 <body>
@@ -365,7 +436,7 @@ nav svg{width:21px;height:21px}
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     <input id="q" type="search" inputmode="search" autocomplete="off"
-           placeholder="Placa, palabra o código: AWM-902, freno, 2610010723…" aria-label="Buscar">
+           placeholder="Buscar placa, palabra o código" aria-label="Buscar">
     <button type="button" id="limpiar" hidden aria-label="Limpiar búsqueda">×</button>
   </label>
 </header>
@@ -377,7 +448,10 @@ nav svg{width:21px;height:21px}
 </main>
 
 <nav>
-  <button type="button" data-vista="pend" aria-current="page">
+  <button type="button" data-vista="ini" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Inicio</button>
+  <button type="button" data-vista="pend">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M4 6h16M4 12h16M4 18h10"/></svg>Pendientes</button>
   <button type="button" data-vista="ord">
@@ -387,20 +461,27 @@ nav svg{width:21px;height:21px}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M9 11l2 2 4-4"/><rect x="3" y="4" width="18" height="17" rx="2"/>
       <path d="M8 2v4M16 2v4"/></svg>Plan</button>
-  <button type="button" data-vista="ace" id="btnace" hidden>
+  <button type="button" data-vista="ace" id="btnace" class="extra" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M3 13h4l2-5 3 10 2-6 2 3h5"/></svg>Aceite</button>
-  <button type="button" data-vista="hist" id="btnhist" hidden>
+  <button type="button" data-vista="hist" id="btnhist" class="extra" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg>Historial</button>
-  <button type="button" data-vista="fmt" id="btnfmt" hidden>
+  <button type="button" data-vista="fmt" id="btnfmt" class="extra" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/>
       <path d="m9 13 2 2 4-4"/></svg>Otras alertas</button>
-  <button type="button" data-vista="res">
+  <button type="button" data-vista="res" class="extra">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen</button>
+  <button type="button" data-mas id="btnmas" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Más</button>
 </nav>
+<div id="hojamas" hidden role="dialog" aria-label="Más pantallas">
+  <div class="fondo"></div>
+  <div class="panel"><div class="asa"></div><div id="listamas"></div></div>
+</div>
 <script>
 window.arrancar = function(D){
 "use strict";
@@ -433,7 +514,7 @@ const ROTULO_SEM = {
 const rotSem = s => !s ? "" : (ROTULO_SEM[s] ||
                                (s.charAt(0) + s.slice(1).toLowerCase()));
 
-let vista = "pend", cat = "", soloCriticos = false, texto = "", abiertas = new Set();
+let vista = "ini", cat = "", soloCriticos = false, texto = "", abiertas = new Set();
 // "" todas · "mant" mecanico/electrico/infraestructura · "otras" el resto.
 // Es un filtro aparte del de categoria: se pueden combinar.
 let grupo = "";
@@ -651,11 +732,12 @@ function pintarOrdenes(){
       <div class="ocab">
         <span class="placa">${esc(o.p)}</span>
         <span class="estado ${o.e==="EN_TALLER"?"tal":"gen"}">${o.e==="EN_TALLER"?"En taller":"Generada"}</span>
-        <span class="corr">${esc(o.k)}</span>
+        <span class="corr">${esc(o.k)}</span>${String(o.k).startsWith("OS-C-")?'<span class="ocel">Celular</span>':''}
       </div>
       <div class="ometa">${esc(o.c)} · ${esc(o.op||"sin asignar")} · emitida ${dia(o.fe)}</div>
       <div class="ometa"><b>${o.h}</b> de <b>${o.t}</b> trabajos hechos</div>
       <div class="progreso"><i style="width:${pct}%"></i></div>
+      ${o.it?`<button type="button" class="opdf" data-pdf="${esc(o.k)}">Descargar PDF</button>`:''}
     </article>`;
   }
   lienzo.innerHTML = h;
@@ -1228,14 +1310,104 @@ function pintar(){
   pintarChips();
   // OJO: .chips es display:flex, asi que `hidden` NO la esconde -- la misma
   // trampa que tapaba la pantalla con la puerta del PIN. Se toca el display.
-  chips.style.display = (vista === "ace" || vista === "plan" || vista === "fmt") ? "none" : "";
-  if (vista === "pend") pintarPendientes();
+  // En Inicio y en Órdenes tampoco: los chips cuentan pendientes y ahí
+  // confundían («Todas 655» encima de 47 órdenes).
+  chips.style.display = (vista === "ace" || vista === "plan" || vista === "fmt"
+                         || vista === "ini" || vista === "ord") ? "none" : "";
+  if (vista === "ini") pintarInicio();
+  else if (vista === "pend") pintarPendientes();
   else if (vista === "ord") pintarOrdenes();
   else if (vista === "ace") pintarAceite();
   else if (vista === "plan") pintarPlan();
   else if (vista === "hist") pintarHistorial();
   else if (vista === "fmt") pintarFormato();
   else pintarResumen();
+}
+
+// ---- Inicio -----------------------------------------------------------
+// Lo del día, con los MISMOS datos del paquete: nada se calcula distinto que
+// en su pantalla. Cada recuadro lleva a su lista ya filtrada.
+const DIAS_SEM = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto",
+               "septiembre","octubre","noviembre","diciembre"];
+function pintarInicio(){
+  const hoy = new Date();
+  const mant = D.pend.filter(p => MANT.has(p.c)).length;
+  const crit = D.pend.filter(p => p.k >= 8).length;
+  const enTaller = D.ordenes.filter(o => o.e === "EN_TALLER").length;
+  const R = ACE ? (ACE.res || {}) : null;
+  let h = `<div class="saludo"><h2>${DIAS_SEM[hoy.getDay()]} ${hoy.getDate()} de ${MESES[hoy.getMonth()]}</h2>
+      <p>Datos al ${dia(D.generado.slice(0,10))} a las ${D.generado.slice(11,16)} · ${D.pend.length} pendientes en ${new Set(D.pend.map(p=>p.u)).size} unidades</p></div>
+    <div class="resumen inicio-tiles">
+      <button type="button" class="tile ir" data-ir="pend" data-grupo="mant"><b>${mant}</b><span>de mantenimiento</span></button>
+      <button type="button" class="tile ir rojo" data-ir="pend" data-crit="1"><b>${crit}</b><span>críticos (8 o más)</span></button>
+      <button type="button" class="tile ir" data-ir="ord"><b>${D.ordenes.length}</b><span>órdenes abiertas${enTaller?` · ${enTaller} en taller`:""}</span></button>`
+    + (R ? `<button type="button" class="tile ir${R.v ? " rojo" : ""}" data-ir="ace" data-sem="VENCIDO"><b>${R.v||0}</b><span>aceite vencido${R.c?` · ${R.c} crítico${R.c===1?"":"s"}`:""}</span></button>`
+         : `<button type="button" class="tile ir ambar" data-ir="pend" data-viejos="1"><b>${D.pend.filter(p=>p.n>30).length}</b><span>con más de 30 días</span></button>`)
+    + `</div>`;
+
+  // Lo más urgente: cada unidad por su PEOR trabajo (el más grave y, entre
+  // iguales, el más viejo), como se decide a quién traer.
+  const peor = new Map();
+  for (const p of D.pend){
+    if (!(p.k >= 8)) continue;
+    const a = peor.get(p.u);
+    if (!a || (p.k||0) > (a.p.k||0) || ((p.k||0) === (a.p.k||0) && p.n > a.p.n))
+      peor.set(p.u, {p:p, n:(a ? a.n : 0)});
+    peor.get(p.u).n = (a ? a.n : 0) + 1;
+  }
+  const total = {};
+  for (const p of D.pend) total[p.u] = (total[p.u]||0) + 1;
+  const urg = [...peor.entries()].sort((a,b) =>
+      (b[1].p.k||0) - (a[1].p.k||0) || b[1].p.n - a[1].p.n).slice(0, 6);
+  if (urg.length){
+    h += `<div class="secc-ir"><h2 class="seccion">Lo más urgente</h2>
+          <button type="button" data-ir="pend" data-crit="1">Ver los ${crit} ›</button></div>`;
+    for (const [placa, v] of urg){
+      const p = v.p, col = colorNivel(nivel(p.k));
+      h += `<button type="button" class="urg" data-ir="pend" data-placa="${esc(placa)}">
+        <span class="uk" style="background:${col}">${p.k}</span>
+        <span class="ucuerpo">
+          <span class="ulin"><span class="placa">${esc(placa)}</span>
+            <span class="tipo">${p.t === "C" ? "Carreta" : "Tracto"}</span>
+            <span class="cat">${esc(rotCat(p.c))}</span></span>
+          <span class="ux">${esc(p.x)}</span>
+          <span class="um">${p.n} días · ${total[placa]} pendiente${total[placa]===1?"":"s"} en la unidad${p.o?` · en ${esc(p.o)}`:""}</span>
+        </span></button>`;
+    }
+  }
+
+  // Hoy en el taller, si hay plan publicado.
+  if (PLAN){
+    const Rp = PLAN.res || {};
+    const gente = (PLAN.cg || []).length;
+    h += `<h2 class="seccion">Taller</h2>
+      <button type="button" class="fila-ir" data-ir="plan"><b>${Rp.n||0}</b>
+        <span>unidades en el plan${PLAN.f?` del ${dia(PLAN.f)}`:""}
+          <span class="sub">${Rp.tr||0} trabajos · ${gente} técnico${gente===1?"":"s"} repartidos${Rp.c?` · ${Rp.c} críticos`:""}</span></span><em>Ver ›</em></button>`;
+  }
+  // Otras alertas: las unidades con algo en rojo.
+  if (FMT && FMT.u){
+    const rojas = FMT.u.filter(u => (u.a||[]).some(a => a[3] === "r")).length;
+    h += `<button type="button" class="fila-ir" data-ir="fmt"><b style="color:var(--c10)">${rojas}</b>
+        <span>unidades con alerta roja del checklist
+          <span class="sub">extintor, llantas, documentos o carga</span></span><em>Ver ›</em></button>`;
+  }
+  // Lo último que se hizo.
+  if (HIST.length){
+    h += `<div class="secc-ir"><h2 class="seccion">Lo último que se hizo</h2>
+          <button type="button" data-ir="hist">Historial ›</button></div><div class="hlista">`;
+    for (const x of HIST.slice(0, 3)){
+      const col = colorNivel(nivel(x.k));
+      h += `<article class="trabajo"><span class="franja" style="background:${col}"></span>
+        <div class="tcuerpo"><div class="tmeta"><span class="hplaca">${esc(x.u)}</span>
+          <span class="cat">${esc(rotCat(x.c))}</span><span class="dias">${dia(x.f)}</span></div>
+          <div class="texto">${esc(x.x)}</div>
+          ${x.q ? `<span class="etq quien">Lo hizo ${esc(x.q)}</span>` : ""}</div></article>`;
+    }
+    h += `</div>`;
+  }
+  lienzo.innerHTML = h;
 }
 if (ACE) document.getElementById("btnace").hidden = false;
 if (PLAN || AUX.length || EST.length) document.getElementById("btnplan").hidden = false;
@@ -1298,24 +1470,134 @@ lienzo.addEventListener("click", e => {
   b.setAttribute("aria-expanded", String(!abierta));
   if (abierta) abiertas.delete(placa); else abiertas.add(placa);
 });
-document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
-  vista = b.dataset.vista;
-  document.querySelectorAll("nav button").forEach(x =>
-    x.removeAttribute("aria-current"));
-  b.setAttribute("aria-current", "page");
+const hojaMas = document.getElementById("hojamas");
+const btnMas = document.getElementById("btnmas");
+function marcarNav(){
+  let enExtra = false;
+  document.querySelectorAll("nav button[data-vista]").forEach(x => {
+    const es = x.dataset.vista === vista;
+    if (es) x.setAttribute("aria-current", "page"); else x.removeAttribute("aria-current");
+    if (es && x.classList.contains("extra")) enExtra = true;
+  });
+  // Si la pantalla está en «Más», en el teléfono se ilumina «Más».
+  if (enExtra) btnMas.setAttribute("aria-current", "page");
+  else btnMas.removeAttribute("aria-current");
+}
+function irA(v){
+  vista = v;
+  marcarNav();
   window.scrollTo({top:0});
   pintar();
-}));
+  lienzo.classList.remove("entra"); void lienzo.offsetWidth; lienzo.classList.add("entra");
+}
+document.querySelectorAll("nav button[data-vista]").forEach(b =>
+  b.addEventListener("click", () => irA(b.dataset.vista)));
+btnMas.addEventListener("click", () => {
+  const lista = document.getElementById("listamas");
+  let h = "";
+  document.querySelectorAll("nav button.extra").forEach(x => {
+    if (x.hidden) return;
+    h += `<button type="button" class="opc" data-va="${x.dataset.vista}">${x.innerHTML}</button>`;
+  });
+  lista.innerHTML = h;
+  hojaMas.hidden = false;
+});
+hojaMas.addEventListener("click", e => {
+  const o = e.target.closest("[data-va]");
+  hojaMas.hidden = true;
+  if (o) irA(o.dataset.va);
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") hojaMas.hidden = true; });
+// Los recuadros de Inicio llevan a su lista ya filtrada.
+lienzo.addEventListener("click", e => {
+  const b = e.target.closest("[data-ir]"); if (!b) return;
+  e.stopPropagation();
+  const d = b.dataset;
+  if (d.ir === "pend"){
+    cat = ""; grupo = ""; soloCriticos = false;
+    if (d.grupo) grupo = d.grupo;
+    if (d.crit) { soloCriticos = true; criterio = "grav"; viejosArriba = true; }
+    if (d.viejos) { criterio = "ant"; viejosArriba = true; }
+    if (d.placa){ texto = d.placa; caja.value = d.placa; limpiar.hidden = false;
+                  abiertas.add(d.placa); }
+    else if (texto){ texto = ""; caja.value = ""; limpiar.hidden = true; }
+    recordar();
+  }
+  if (d.ir === "ace") semFiltro = d.sem || "";
+  irA(d.ir);
+}, true);
 let t0;
 caja.addEventListener("input", () => {
   texto = caja.value; limpiar.hidden = !texto;
+  // Buscar desde Inicio lleva a Pendientes: es lo que se busca casi siempre.
+  if (texto && (vista === "ini" || vista === "res")) { vista = "pend"; marcarNav(); }
   clearTimeout(t0); t0 = setTimeout(pintar, 140);
 });
 limpiar.addEventListener("click", () => {
   caja.value = ""; texto = ""; limpiar.hidden = true; caja.focus(); pintar();
 });
 
+marcarNav();
 pintar();
+
+// ---------- La orden en PDF (2.61.2) ----------
+// Con lo que ya trae el paquete y su MISMO correlativo: no crea nada, es la
+// misma orden emitida, con el formato del Generador, para imprimirla aqui.
+const LIBS_PDF = ["https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+                  "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"];
+function cargarJs(src){ return new Promise((ok, mal) => { const a = document.createElement("script"); a.src = src; a.onload = ok; a.onerror = () => mal(new Error("sin librería")); document.head.appendChild(a); }); }
+let logoPdf = null;
+async function logoDataUrl(){
+  if (logoPdf !== null) return logoPdf;
+  try { const r = await fetch("ejecutivos/logo.png"); if (!r.ok) throw 0; const b = await r.blob();
+    logoPdf = await new Promise(ok => { const f = new FileReader(); f.onload = () => ok(f.result); f.readAsDataURL(b); }); }
+  catch(e){ logoPdf = ""; }
+  return logoPdf;
+}
+const colorCrit = c => c<=4?[146,208,80]:c<=5.5?[255,255,0]:c<=7.9?[255,192,0]:[255,0,0];
+const ddmmaa = iso => iso ? `${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(0,4)}` : "";
+async function pdfOrden(k, btn){
+  const o = D.ordenes.find(x => x.k === k); if (!o) return;
+  const txt = btn.textContent; btn.disabled = true; btn.textContent = "Armando PDF…";
+  try {
+    if (!window.jspdf) await cargarJs(LIBS_PDF[0]);
+    if (!window.jspdf.jsPDF.API.autoTable) await cargarJs(LIBS_PDF[1]);
+    const logo = await logoDataUrl(), emp = D.emp || {}, tracto = o.ti !== "C";
+    const doc = new window.jspdf.jsPDF({orientation:"landscape", unit:"mm", format:"a4"});
+    const X = 8, W = 281, wl = 63, wt = 166, we = 23, wv = W-wl-wt-we, hs = 4.6, h = 4.8, y0 = 8;
+    doc.setLineWidth(0.25); doc.setDrawColor(0);
+    doc.rect(X, y0, wl, 4*hs); if (logo) { try { doc.addImage(logo, "PNG", X+3, y0+2, wl-6, 4*hs-4, undefined, "FAST"); } catch(e){} }
+    doc.rect(X+wl, y0, wt, 4*hs); doc.setFont("helvetica","bold"); doc.setFontSize(12);
+    doc.text("ORDEN DE SERVICIO MANTENIMIENTO CORRECTIVO", X+wl+wt/2, y0+2*hs+1.5, {align:"center"});
+    const fe = ddmmaa(o.fe || "");
+    [["Codigo:", emp.cod||""], ["Version:", emp.ver||""], ["Fecha:", fe], ["N°", o.k]].forEach(([a, b], i) => { const yy = y0+i*hs;
+      doc.rect(X+wl+wt, yy, we, hs); doc.rect(X+wl+wt+we, yy, wv, hs); doc.setFontSize(6.8); doc.setFont("helvetica","bold");
+      doc.text(a, X+wl+wt+we/2, yy+hs/2+1.1, {align:"center"}); doc.setFont("helvetica","normal"); doc.text(String(b), X+wl+wt+we+wv/2, yy+hs/2+1.1, {align:"center"}); });
+    const izq = [["FECHA DE EMISION", fe], ["ELABORADO POR", emp.por||""], ["TIPO DE MANTENIMIENTO", emp.tipo||"CORRECTIVO"], ["CATEGORIA", rotCat(o.c)]];
+    const der = [[tracto?"CONDUCTOR":"RESPONSABLE", o.cd||"-"], ["FECHA DE ENTREGA", ""], ["OPERARIO", o.op||"POR DEFINIR"], ["PLACA "+(tracto?"TRACTO":"CARRETA"), o.p]];
+    const y1 = y0+4*hs;
+    for (let i = 0; i < 4; i++){ const yy = y1+i*h;
+      doc.setFillColor(244,177,131); doc.rect(X, yy, wl, h, "FD"); doc.rect(X+wl+wt, yy, we, h, "FD");
+      doc.rect(X+wl, yy, wt, h); doc.rect(X+wl+wt+we, yy, wv, h);
+      doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.text(izq[i][0], X+wl/2, yy+h/2+1.1, {align:"center"});
+      doc.setFontSize(6.2); doc.text(der[i][0], X+wl+wt+we/2, yy+h/2+1.1, {align:"center"});
+      doc.setFont("helvetica", i===3?"bold":"normal"); doc.setFontSize(8.5); doc.text(String(izq[i][1]), X+wl+2, yy+h/2+1.2);
+      doc.setFontSize(7.5); doc.text(doc.splitTextToSize(String(der[i][1]), wv-2)[0]||"", X+wl+wt+we+wv/2, yy+h/2+1.1, {align:"center"}); }
+    const cab = ["ID","FECHA DE\nSOLICITUD","PLACA DEL\n"+(tracto?"TRACTO":"CARRETA"),"DESCRIPCION","CRITI-\nCIDAD","REQUERIMIENTO?\nMARCAR X","RESPONSABLE","FECHA\nINICIO","FECHA\nFINALIZADO","FIRMA"];
+    const rel = [26,22,24,100,13,27,25,21,23,30], tot = rel.reduce((a, b) => a+b, 0);
+    const cuerpo = (o.it||[]).map(r => [r[0], ddmmaa(r[1]), o.p, r[2], String(r[3]), "", "", "", r[4]?"Hecho":"", ""]);
+    while (cuerpo.length < 10) cuerpo.push(["","","","","","","","","",""]);
+    doc.autoTable({startY: y1+4*h+3, head:[cab], body:cuerpo, theme:"grid", margin:{left:X, right:X},
+      styles:{fontSize:6.8, cellPadding:1.2, textColor:0, lineColor:0, lineWidth:0.2, valign:"middle", minCellHeight:6.2},
+      headStyles:{fillColor:[169,208,142], textColor:0, fontStyle:"bold", halign:"center", fontSize:6.5},
+      columnStyles:Object.fromEntries(rel.map((r, i) => [i, {cellWidth:W*r/tot, halign:i===3?"left":"center"}])),
+      didParseCell:d => { if (d.section==="body" && d.column.index===4 && d.cell.raw!==""){ d.cell.styles.fillColor = colorCrit(+d.cell.raw); d.cell.styles.fontStyle = "bold"; } },
+      didDrawPage:() => { doc.setFontSize(6); doc.setTextColor(120); doc.text("Pag. "+doc.internal.getNumberOfPages(), 289, 205, {align:"right"}); doc.setTextColor(0); }});
+    doc.save(`OS_${o.k}_${o.p}_${o.c}.pdf`);
+  } catch(e){ btn.textContent = "No se pudo (revisa la señal)"; setTimeout(() => { btn.textContent = txt; }, 2500); btn.disabled = false; return; }
+  btn.disabled = false; btn.textContent = txt;
+}
+lienzo.addEventListener("click", e => { const b = e.target.closest("[data-pdf]"); if (b) pdfOrden(b.dataset.pdf, b); });
 };
 </script>
 <script>
